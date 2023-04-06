@@ -17,7 +17,6 @@ class MainWindow(QMainWindow):
         self.fpath = ()
         self.spath = ()
         self.pixmap = None
-        self.sketch = None
 
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
@@ -54,7 +53,9 @@ class MainWindow(QMainWindow):
         tool_bar.setIconSize(QSize(24, 24))
 
         self.addToolBar(tool_bar)
-        self.setStatusBar(QStatusBar(self))
+        status_bar = QStatusBar(self)
+        status_bar.setStyleSheet("QStatusBar {color: white;}")
+        self.setStatusBar(status_bar)
 
         tool_bar.addAction(open_action)
         tool_bar.addAction(save_action)
@@ -67,28 +68,36 @@ class MainWindow(QMainWindow):
         tool_bar.addAction(reset_action)
 
         self.label = QLabel("Open an image", self)
+        self.label.setStyleSheet("QLabel {color: white;}")
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setMinimumSize(1, 1)
+
+        self.default_path = os.path.expanduser('~') + "/Downloads/"
 
         self.setCentralWidget(self.label)
 
     def open_file(self):
-        self.statusBar().showMessage("Openning a file...")
-        self.fpath = QFileDialog.getOpenFileName(self, "Open File", os.path.expanduser('~') + "/Downloads/", "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
-        self.reset_canvas()
+        self.statusBar().showMessage("Openning a file..." ,3000)
+
+        path, _ = QFileDialog.getOpenFileName(self, "Open File", self.default_path, "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
+        if not path:
+            self.statusBar().showMessage("File dialog closed" ,3000)
+        else:
+            self.fpath = path
+            self.reset_canvas()
 
     def save_file(self):
-        self.statusBar().showMessage("Saving the file...")
+        self.statusBar().showMessage("Saving the file..." ,3000)
         self.spath = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
         shutil.copy(self.fpath[0], self.spath[0])
 
     def draw_image(self):
         if len(self.fpath) < 0:
-            self.statusBar().showMessage("No image currently open!")
+            self.statusBar().showMessage("No image currently open!" ,3000)
 
         else:
             self.sketch = sketchify(self.fpath[0])
-            self.statusBar().showMessage("Image successfully converted")
+            self.statusBar().showMessage("Image successfully converted" ,3000)
             self.load_sketch()
 
     def load_sketch(self):
@@ -102,7 +111,7 @@ class MainWindow(QMainWindow):
 
     def reset_canvas(self):
         if len(self.fpath) == 0:
-            self.statusBar().showMessage("No image currently open!")
+            self.statusBar().showMessage("No image currently open!" ,3000)
         else:
             self.pixmap = QPixmap(self.fpath[0])
             self.canvas_aspect_ratio = self.width() / self.height()
@@ -115,4 +124,4 @@ class MainWindow(QMainWindow):
 
             self.label.setPixmap(self.pixmap)
             self.label.resize(self.width(), self.height())
-            self.statusBar().showMessage("Canvas view reset")
+            self.statusBar().showMessage("Canvas view reset" ,3000)
