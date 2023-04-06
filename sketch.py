@@ -10,4 +10,6 @@ def sketchify(path):
     inverted_blur = cv2.bitwise_not(blur)
     sketch = cv2.divide(grey_img, inverted_blur, scale=256.0)
 
-    cv2.imwrite(path + ".png", sketch)
+    cv2.imwrite(path + "~", sketch)
+
+    return sketch

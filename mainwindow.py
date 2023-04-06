@@ -1,11 +1,12 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
-from PySide6.QtWidgets import QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog, QLayout
+from PySide6.QtWidgets import QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
+from sketch import *
 
 import os
+import shutil
 
 class MainWindow(QMainWindow):
-
     def __init__(self, app):
         super().__init__()
         self.app = app
@@ -14,6 +15,9 @@ class MainWindow(QMainWindow):
         self.setGeometry(500, 150, 1000, 700)
 
         self.fpath = ()
+        self.spath = ()
+        self.pixmap = None
+        self.sketch = None
 
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
@@ -41,6 +45,11 @@ class MainWindow(QMainWindow):
         help_menu.addAction("About")
         help_menu.addAction("Contact")
 
+        view_menu = menu_bar.addMenu("View")
+        reset_action = view_menu.addAction(QIcon("sprites/Reset.png"), "Reset")
+        reset_action.setStatusTip("Resets the image to fit the canvas")
+        reset_action.triggered.connect(self.reset_canvas)
+
         tool_bar = QToolBar("Toolbar")
         tool_bar.setIconSize(QSize(24, 24))
 
@@ -55,6 +64,7 @@ class MainWindow(QMainWindow):
         draw_action.triggered.connect(self.draw_image)
 
         tool_bar.addAction(draw_action)
+        tool_bar.addAction(reset_action)
 
         self.label = QLabel("Open an image", self)
         self.label.setAlignment(Qt.AlignCenter)
@@ -63,32 +73,46 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.label)
 
     def open_file(self):
-
         self.statusBar().showMessage("Openning a file...")
-
         self.fpath = QFileDialog.getOpenFileName(self, "Open File", os.path.expanduser('~') + "/Downloads/", "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
-        pixmap = QPixmap(self.fpath[0])
-
-        self.img_aspect_ratio = pixmap.width() / pixmap.height() 
-
-        if self.img_aspect_ratio < 1:
-            pixmap = pixmap.scaledToHeight(self.height(), Qt.FastTransformation)
-            self.statusBar().showMessage("Height scale")
-        else:
-            pixmap = pixmap.scaledToWidth(self.width(), Qt.FastTransformation)
-            self.statusBar().showMessage("width scale")
-
-        #self.statusBar().showMessage("The aspect ratio is "+str(self.img_aspect_ratio))
-        self.label.setPixmap(pixmap)
+        self.reset_canvas()
 
     def save_file(self):
         self.statusBar().showMessage("Saving the file...")
+        self.spath = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
+        shutil.copy(self.fpath[0], self.spath[0])
 
     def draw_image(self):
-        self.statusBar().showMessage("Converting the image...")
+        if len(self.fpath) < 0:
+            self.statusBar().showMessage("No image currently open!")
+
+        else:
+            self.sketch = sketchify(self.fpath[0])
+            self.statusBar().showMessage("Image successfully converted")
+            self.load_sketch()
+
+    def load_sketch(self):
+        fpath = list(self.fpath)
+        fpath[0] = self.fpath[0] + "~"
+        self.fpath = tuple(fpath)
+        self.reset_canvas()
 
     def quit_app(self):
         self.app.quit()
 
     def reset_canvas(self):
-        self.statusBar().showMessage("Canvas view Reset")
+        if len(self.fpath) == 0:
+            self.statusBar().showMessage("No image currently open!")
+        else:
+            self.pixmap = QPixmap(self.fpath[0])
+            self.canvas_aspect_ratio = self.width() / self.height()
+            self.img_aspect_ratio = self.pixmap.width() / self.pixmap.height() 
+
+            if self.img_aspect_ratio > self.canvas_aspect_ratio:
+                self.pixmap = self.pixmap.scaledToWidth(self.width())
+            else:
+                self.pixmap = self.pixmap.scaledToHeight(self.height())
+
+            self.label.setPixmap(self.pixmap)
+            self.label.resize(self.width(), self.height())
+            self.statusBar().showMessage("Canvas view reset")
