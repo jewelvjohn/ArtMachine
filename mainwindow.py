@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap
-from PySide6.QtWidgets import QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
+from PySide6.QtWidgets import QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog, QMessageBox
 from sketch import *
 
 import os
@@ -79,8 +79,9 @@ class MainWindow(QMainWindow):
     def open_file(self):
         self.statusBar().showMessage("Openning a file..." ,3000)
 
-        path, _ = QFileDialog.getOpenFileName(self, "Open File", self.default_path, "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
-        if not path:
+        path = QFileDialog.getOpenFileName(self, "Open File", self.default_path, "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
+        
+        if path[0] == "":
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
             self.fpath = path
@@ -88,8 +89,14 @@ class MainWindow(QMainWindow):
 
     def save_file(self):
         self.statusBar().showMessage("Saving the file..." ,3000)
-        self.spath = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
-        shutil.copy(self.fpath[0], self.spath[0])
+        path = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
+
+        if path[0] == "":
+            self.statusBar().showMessage("File dialog closed" ,3000)
+        else:
+            self.spath = path
+            shutil.copy(self.fpath[0], self.spath[0])
+            
 
     def draw_image(self):
         if len(self.fpath) < 0:
