@@ -6,7 +6,7 @@ from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QFont
-from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
+from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLineEdit, QSizePolicy
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -50,6 +50,9 @@ class MainWindow(QMainWindow):
         undo_action = edit_menu.addAction("Undo")
         redo_action = edit_menu.addAction("Redo")
 
+        settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
+        settings_action.setStatusTip("Enter application settings")
+
         gray_action = image_menu.addAction("Grayscale")
         gray_action.setStatusTip("Converts the image into Grayscale")
         gray_action.triggered.connect(self.image_gray)
@@ -60,10 +63,7 @@ class MainWindow(QMainWindow):
 
         contrast_action = image_menu.addAction("Contrast")
         contrast_action.setStatusTip("Always you to modify the image contrast")
-
-        settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
-        settings_action.setStatusTip("Enter application settings")
-
+        contrast_action.triggered.connect(self.contrast_dialog)
 
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
@@ -176,6 +176,11 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Image successfully converted" ,3000)
         self.reset_canvas()
 
+    def contrast_dialog(self):
+        cont_dialog = ContrastDialog()
+        cont_dialog.show()
+        cont_dialog.exec()
+
     def rem_bg(self):
         input = Image.open(self.cpath)
         output = remove(input)
@@ -216,6 +221,40 @@ class MainWindow(QMainWindow):
 
     def quit_app(self):
         self.app.quit()
+
+class ContrastDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet("QDialog {background: rgb(25, 25, 25);}")
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle("Set Contrast")
+        self.setGeometry(700, 300, 300, 150)
+        self.setFixedSize(QSize(300, 150))
+
+        label = QLabel("Contrast:")
+        label.setStyleSheet("QLabel {color: rgb(128, 128, 128)}")
+
+        slider = QSlider(Qt.Horizontal)
+        line = QLineEdit()
+
+        ok_button = QPushButton("Ok")
+        cancel_button = QPushButton("Cancel")
+
+        layout = QVBoxLayout()
+        slider_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        slider_layout.addWidget(slider)
+        slider_layout.addWidget(line)
+
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+
+        layout.addWidget(label)
+        layout.addLayout(slider_layout)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
 
 app = QApplication(sys.argv)
 window = MainWindow(app)
