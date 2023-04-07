@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.cpath = "files\\temp.png"
 
         self.pixmap = None
+        self.rem_index = 2
 
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
@@ -138,13 +139,25 @@ class MainWindow(QMainWindow):
                 cv2.imwrite(self.cpath, self.sketch)
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
-
                 self.reset_canvas()
 
     def rem_bg(self):
         input = Image.open(self.fpath[0])
         output = remove(input)
         output.save(self.cpath)
+
+        if self.rem_index == 0:
+            width, height = input.size
+            white = Image.new("RGB", (height, width), (255, 255, 255))
+
+            white.paste(output, (0,0), mask = output)
+            white.save(self.cpath)
+        elif self.rem_index == 1:
+            width, height = input.size
+            white = Image.new("RGB", (height, width), (0, 0, 0))
+
+            white.paste(output, (0,0), mask = output)
+            white.save(self.cpath)
 
         self.reset_canvas()
 
