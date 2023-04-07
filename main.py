@@ -3,7 +3,7 @@ import sys
 import shutil
 
 from rembg import remove
-from PIL import Image, ImageOps, ImageFilter, ImageMath
+from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QFont
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
@@ -16,16 +16,22 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon("sprites\\Icon.png"))
         self.setGeometry(500, 150, 1000, 700)
 
-        self.canvas_margin = 100
         self.fpath = ()
         self.spath = ()
+        self.canvas_margin = 100
         self.cpath = "files\\temp.png"
 
         self.pixmap = None
         self.rem_index = 2
+        self.img_contrast = 1.5
 
         menu_bar = self.menuBar()
+
         file_menu = menu_bar.addMenu("File")
+        edit_menu = menu_bar.addMenu("Edit")
+        image_menu = menu_bar.addMenu("Image")
+        view_menu = menu_bar.addMenu("View")
+        help_menu = menu_bar.addMenu("Help")
 
         open_action = file_menu.addAction(QIcon("sprites\\File.png"), "Open")
         open_action.setShortcut('Ctrl+O')
@@ -41,27 +47,34 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut('Ctrl+W')
         quit_action.triggered.connect(self.quit_app)
 
+        undo_action = edit_menu.addAction("Undo")
+        redo_action = edit_menu.addAction("Redo")
 
-        edit_menu = menu_bar.addMenu("Edit")
-        edit_menu.addAction("Copy")
-        edit_menu.addAction("Cut")
-        edit_menu.addAction("Paste")
-        edit_menu.addAction("Undo")
-        edit_menu.addAction("Redo")
+        gray_action = image_menu.addAction("Grayscale")
+        gray_action.setStatusTip("Converts the image into Grayscale")
+        gray_action.triggered.connect(self.image_gray)
 
-        help_menu = menu_bar.addMenu("Help")
-        help_menu.addAction("About")
-        help_menu.addAction("Contact")
+        invert_action = image_menu.addAction("Invert")
+        invert_action.setStatusTip("Inverts the image colors")
+        invert_action.triggered.connect(self.image_invert)
 
-        view_menu = menu_bar.addMenu("View")
+        contrast_action = image_menu.addAction("Contrast")
+        contrast_action.setStatusTip("Always you to modify the image contrast")
+
+        settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
+        settings_action.setStatusTip("Enter application settings")
+
 
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
         reset_action.setStatusTip("Resets the image to fit the canvas")
         reset_action.triggered.connect(self.reset_canvas)
 
+        about_action = help_menu.addAction("About")
+        contact_action = help_menu.addAction("Contact")
+
         tool_bar = QToolBar("Toolbar")
-        tool_bar.setIconSize(QSize(24, 24))
+        tool_bar.setIconSize(QSize(30, 30))
 
         self.addToolBar(tool_bar)
         status_bar = QStatusBar(self)
@@ -86,7 +99,7 @@ class MainWindow(QMainWindow):
         tool_bar.addSeparator()
 
         self.label = QLabel("Open an image(Ctrl + O)", self)
-        self.label.setFont(QFont("Poppins", 24))
+        self.label.setFont(QFont("Arial", 24))
         self.label.setStyleSheet("QLabel {color: rgb(72, 72, 72);}")
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setMinimumSize(1, 1)
@@ -137,6 +150,31 @@ class MainWindow(QMainWindow):
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
                 self.reset_canvas()
+
+    def image_gray(self):
+        img = Image.open(self.cpath)
+        output = img.convert('L')
+        output.save(self.cpath)
+        
+        self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.reset_canvas()
+
+    def image_invert(self):
+        img = Image.open(self.cpath)
+        output = ImageOps.invert(img)
+        output.save(self.cpath)
+        
+        self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.reset_canvas()
+
+    def image_contrast(self):
+        img = Image.open(self.cpath)
+        enhancer = ImageEnhance.Contrast(img)
+        output = enhancer.enhance(self.img_contrast)
+        output.save(self.cpath)
+
+        self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.reset_canvas()
 
     def rem_bg(self):
         input = Image.open(self.cpath)
