@@ -1,10 +1,13 @@
 import os
 import cv2
 import sys
+import shutil
 
+from rembg import remove
+from PIL import Image
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QFont
-from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog, QCheckBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -17,7 +20,8 @@ class MainWindow(QMainWindow):
         self.canvas_margin = 100
         self.fpath = ()
         self.spath = ()
-        self.cpath = ()
+        self.cpath = "files\\temp.png"
+
         self.pixmap = None
 
         menu_bar = self.menuBar()
@@ -50,6 +54,7 @@ class MainWindow(QMainWindow):
         help_menu.addAction("Contact")
 
         view_menu = menu_bar.addMenu("View")
+
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
         reset_action.setStatusTip("Resets the image to fit the canvas")
@@ -63,17 +68,22 @@ class MainWindow(QMainWindow):
         status_bar.setStyleSheet("QStatusBar {color: rgb(128, 128, 128);}")
         self.setStatusBar(status_bar)
 
-        remove_bg = QCheckBox()
-
         tool_bar.addAction(open_action)
         tool_bar.addAction(save_action)
+
+        rembg_action = QAction(QIcon("sprites\\Remove.png"), "Remove Background", self)
+        rembg_action.setShortcut('Ctrl+B')
+        rembg_action.setStatusTip("Removes the background of an image")
+        rembg_action.triggered.connect(self.rem_bg)
 
         draw_action = QAction(QIcon("sprites\\Draw.png"), "Draw", self)
         draw_action.setStatusTip("Starts converting the picture into drawing")
         draw_action.triggered.connect(self.draw_image)
 
         tool_bar.addAction(draw_action)
+        tool_bar.addAction(rembg_action)
         tool_bar.addAction(reset_action)
+        tool_bar.addSeparator()
 
         self.label = QLabel("Open an image(Ctrl + O)", self)
         self.label.setFont(QFont("Poppins", 24))
@@ -95,7 +105,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
             self.fpath = path
-            self.cpath = path
+            shutil.copy(self.fpath[0], self.cpath)
             self.reset_canvas()
 
     def save_file(self):
@@ -106,7 +116,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
             self.spath = path
-            cv2.imwrite(self.spath[0], self.sketch)
+            shutil.copy(self.cpath, self.spath[0])
             
 
     def draw_image(self):
@@ -125,17 +135,24 @@ class MainWindow(QMainWindow):
                 inverted_blur = cv2.bitwise_not(blur)
                 self.sketch = cv2.divide(grey_img, inverted_blur, scale=256.0)
 
-                cv2.imwrite("files\\temp.png", self.sketch)
+                cv2.imwrite(self.cpath, self.sketch)
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
-                self.cpath = "files\\temp.png"
+
                 self.reset_canvas()
 
+    def rem_bg(self):
+        input = Image.open(self.fpath[0])
+        output = remove(input)
+        output.save(self.cpath)
+
+        self.reset_canvas()
+
     def reset_canvas(self):
-        if len(self.cpath) == 0:
+        if len(self.fpath) == 0:
             self.statusBar().showMessage("No image currently open!" ,3000)
         else:
-            self.pixmap = QPixmap(self.cpath[0])
+            self.pixmap = QPixmap(self.cpath)
             self.canvas_aspect_ratio = self.width() / self.height()
             self.img_aspect_ratio = self.pixmap.width() / self.pixmap.height() 
 
