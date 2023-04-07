@@ -1,10 +1,9 @@
 import os
-import cv2
 import sys
 import shutil
 
 from rembg import remove
-from PIL import Image
+from PIL import Image, ImageOps, ImageFilter, ImageMath
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QFont
 from PySide6.QtWidgets import QApplication, QMainWindow, QToolBar, QStatusBar, QLabel, QFileDialog
@@ -128,21 +127,19 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage("Image already drawn!" ,3000)
             else:
                 self.drawn = True
-                image = cv2.imread(self.fpath[0])
 
-                grey_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-                invert = cv2.bitwise_not(grey_img)
-                blur = cv2.GaussianBlur(invert, (21,21), 0)
-                inverted_blur = cv2.bitwise_not(blur)
-                self.sketch = cv2.divide(grey_img, inverted_blur, scale=256.0)
+                img = Image.open(self.cpath)
+                img_grey = img.convert('L')
+                img_blur = img_grey.filter(ImageFilter.GaussianBlur(radius = 2.5))
+                image = ImageMath.eval("convert(a * 256/b, 'L')", a=img_grey, b=img_blur)
 
-                cv2.imwrite(self.cpath, self.sketch)
+                image.save(self.cpath)
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
                 self.reset_canvas()
 
     def rem_bg(self):
-        input = Image.open(self.fpath[0])
+        input = Image.open(self.cpath)
         output = remove(input)
         output.save(self.cpath)
 
@@ -152,6 +149,7 @@ class MainWindow(QMainWindow):
 
             white.paste(output, (0,0), mask = output)
             white.save(self.cpath)
+            
         elif self.rem_index == 1:
             width, height = input.size
             white = Image.new("RGB", (height, width), (0, 0, 0))
