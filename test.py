@@ -13,25 +13,39 @@ class ContrastDialog(QDialog):
         self.setGeometry(700, 300, 300, 150)
         self.setFixedSize(QSize(300, 150))
 
-        label = QLabel("Contrast:")
+        self.value = int(100)
+
+        label = QLabel("Contrast")
         label.setStyleSheet("QLabel {color: rgb(144, 144, 144)}")
         label.setAlignment(Qt.AlignCenter)
         label.setMaximumHeight(20)
         label.setFont(QFont("Arial", 18))
 
-        slider = QSlider(Qt.Horizontal)
-        line = QLineEdit()
-        line.setMaximumWidth(40)
+        self.slider = QSlider(Qt.Horizontal)
+        self.line = QLineEdit()
+
+        self.slider.setMaximum(200)
+        self.slider.setMinimum(0)
+        self.slider.setValue(self.value)
+        self.slider.valueChanged.connect(self.slider_changed)
+
+        self.line.setMaximumWidth(40)
+        self.line.setDisabled(True)
+        self.line.setAlignment(Qt.AlignCenter)
+        self.line.setText(str(self.value))
 
         ok_button = QPushButton("Ok")
         cancel_button = QPushButton("Cancel")
+
+        ok_button.pressed.connect(self.apply_dialog)
+        cancel_button.pressed.connect(self.reject)
 
         layout = QVBoxLayout()
         slider_layout = QHBoxLayout()
         button_layout = QHBoxLayout()
 
-        slider_layout.addWidget(slider)
-        slider_layout.addWidget(line)
+        slider_layout.addWidget(self.slider)
+        slider_layout.addWidget(self.line)
 
         button_layout.addWidget(ok_button)
         button_layout.addWidget(cancel_button)
@@ -41,6 +55,14 @@ class ContrastDialog(QDialog):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
+
+    def slider_changed(self):
+        self.value = self.slider.value()
+        self.line.setText(str(self.value))
+
+    def apply_dialog(self):
+        self.enabled = True
+        self.accept()
 
 app = QApplication(sys.argv)
 window = ContrastDialog()

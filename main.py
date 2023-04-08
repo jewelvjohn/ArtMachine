@@ -18,12 +18,12 @@ class MainWindow(QMainWindow):
 
         self.fpath = ()
         self.spath = ()
-        self.canvas_margin = 100
+        self.canvas_margin = int(100)
         self.cpath = "files\\temp.png"
 
         self.pixmap = None
-        self.rem_index = 2
-        self.img_contrast = 1.5
+        self.rem_index = int(2)
+        self.img_contrast = float(1.5)
 
         menu_bar = self.menuBar()
 
@@ -181,6 +181,10 @@ class MainWindow(QMainWindow):
         cont_dialog.show()
         cont_dialog.exec()
 
+        if cont_dialog.enabled:
+            self.img_contrast = float(cont_dialog.value)/100
+            self.image_contrast()
+
     def rem_bg(self):
         input = Image.open(self.cpath)
         output = remove(input)
@@ -231,21 +235,39 @@ class ContrastDialog(QDialog):
         self.setGeometry(700, 300, 300, 150)
         self.setFixedSize(QSize(300, 150))
 
-        label = QLabel("Contrast:")
-        label.setStyleSheet("QLabel {color: rgb(128, 128, 128)}")
+        self.value = int(100)
 
-        slider = QSlider(Qt.Horizontal)
-        line = QLineEdit()
+        label = QLabel("Contrast")
+        label.setStyleSheet("QLabel {color: rgb(144, 144, 144)}")
+        label.setAlignment(Qt.AlignCenter)
+        label.setMaximumHeight(20)
+        label.setFont(QFont("Arial", 18))
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.line = QLineEdit()
+
+        self.slider.setMaximum(200)
+        self.slider.setMinimum(0)
+        self.slider.setValue(self.value)
+        self.slider.valueChanged.connect(self.slider_changed)
+
+        self.line.setMaximumWidth(40)
+        self.line.setDisabled(True)
+        self.line.setAlignment(Qt.AlignCenter)
+        self.line.setText(str(self.value))
 
         ok_button = QPushButton("Ok")
         cancel_button = QPushButton("Cancel")
+
+        ok_button.pressed.connect(self.apply_dialog)
+        cancel_button.pressed.connect(self.reject)
 
         layout = QVBoxLayout()
         slider_layout = QHBoxLayout()
         button_layout = QHBoxLayout()
 
-        slider_layout.addWidget(slider)
-        slider_layout.addWidget(line)
+        slider_layout.addWidget(self.slider)
+        slider_layout.addWidget(self.line)
 
         button_layout.addWidget(ok_button)
         button_layout.addWidget(cancel_button)
@@ -255,6 +277,14 @@ class ContrastDialog(QDialog):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
+
+    def slider_changed(self):
+        self.value = self.slider.value()
+        self.line.setText(str(self.value))
+
+    def apply_dialog(self):
+        self.enabled = True
+        self.accept()
 
 app = QApplication(sys.argv)
 window = MainWindow(app)
