@@ -1,6 +1,9 @@
 import os
 import sys
 import shutil
+import base64
+
+from io import BytesIO 
 
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
@@ -8,9 +11,8 @@ from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction, QIcon, QPixmap, QFont, QDoubleValidator, QValidator
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
-                               QLabel, QFileDialog, QInputDialog, QDialog, 
-                               QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, 
-                               QSlider)
+                               QLabel, QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
+                               QPushButton, QLineEdit, QSlider)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -25,9 +27,13 @@ class MainWindow(QMainWindow):
         self.canvas_margin = int(100)
         self.cpath = "files\\temp.png"
 
+        self.cstack_top = int(0)
+        self.cstack = []
+
         self.pixmap = None
         self.rem_index = int(2)
         self.img_contrast = float(1.5)
+        self.img_brightness = float(1.5)
 
         menu_bar = self.menuBar()
 
@@ -52,6 +58,10 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.quit_app)
 
         undo_action = edit_menu.addAction("Undo")
+        undo_action.setShortcut('Ctrl+Z')
+        undo_action.setStatusTip("Undo the last changes")
+        undo_action.triggered.connect(self.undo)
+
         redo_action = edit_menu.addAction("Redo")
 
         settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
@@ -68,6 +78,10 @@ class MainWindow(QMainWindow):
         contrast_action = image_menu.addAction("Contrast")
         contrast_action.setStatusTip("Always you to modify the image contrast")
         contrast_action.triggered.connect(self.contrast_dialog)
+
+        brightness_action = image_menu.addAction("Brightness")
+        brightness_action.setStatusTip("Always you to modify the image brightness")
+        brightness_action.triggered.connect(self.brightness_dialog)
 
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
@@ -123,6 +137,24 @@ class MainWindow(QMainWindow):
         else:
             self.fpath = path
             shutil.copy(self.fpath[0], self.cpath)
+
+            self.add_command()            
+            self.reset_canvas()
+
+    def add_command(self):
+        self.cstack_top += 1
+        with open(self.cpath, "rb") as file:
+            img = base64.b64encode(file.read())
+
+        self.cstack.append(base64.b64decode(img))
+
+    def undo(self):
+        if len(self.cstack) > 0:
+            self.cstack_top -= 1
+            im_file = BytesIO(self.cstack[self.cstack_top])
+            img = Image.open(im_file)
+
+            img.save(self.cpath)
             self.reset_canvas()
 
     def save_file(self):
@@ -177,7 +209,17 @@ class MainWindow(QMainWindow):
         output = enhancer.enhance(self.img_contrast)
         output.save(self.cpath)
 
-        self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.statusBar().showMessage("Image contrast changed" ,3000)
+        self.reset_canvas()
+
+    def image_brightness(self):
+        img = Image.open(self.cpath)
+        enhancer = ImageEnhance.Brightness(img)
+        output = enhancer.enhance(self.img_brightness)
+
+        output.save(self.cpath)
+
+        self.statusBar().showMessage("Image brightness changed" ,3000)
         self.reset_canvas()
 
     def contrast_dialog(self):
@@ -187,6 +229,14 @@ class MainWindow(QMainWindow):
         if ok:
             self.img_contrast = i/50
             self.image_contrast()
+
+    def brightness_dialog(self):
+        brightness = ApplicationDialogs()
+        i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 100)
+
+        if ok:
+            self.img_brightness = i/50
+            self.image_brightness()
 
     def rem_bg(self):
         input = Image.open(self.cpath)
@@ -230,7 +280,7 @@ class MainWindow(QMainWindow):
         self.app.quit()
 
     def closeEvent(self, event):
-        if(os.path.exists(self.cpath)):
+        if os.path.exists(self.cpath):
             os.remove(self.cpath)
 
 class ApplicationDialogs(QDialog):
