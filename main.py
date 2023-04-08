@@ -126,6 +126,25 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.label)
 
+    def add_command(self):
+        self.cstack_top += 1
+        with open(self.cpath, "rb") as file:
+            img = base64.b64encode(file.read())
+
+        self.cstack.append(base64.b64decode(img))
+
+    def undo(self):
+        if len(self.cstack) > 0 and self.cstack_top > 0:
+            self.cstack_top -= 1
+            im_file = BytesIO(self.cstack[self.cstack_top])
+            img = Image.open(im_file)
+
+            img.save(self.cpath)
+            self.reset_canvas()
+
+    def redo(self):
+        pass
+
     def open_file(self):
         self.drawn = False
         self.statusBar().showMessage("Openning a file..." ,3000)
@@ -138,23 +157,8 @@ class MainWindow(QMainWindow):
             self.fpath = path
             shutil.copy(self.fpath[0], self.cpath)
 
-            self.add_command()            
-            self.reset_canvas()
-
-    def add_command(self):
-        self.cstack_top += 1
-        with open(self.cpath, "rb") as file:
-            img = base64.b64encode(file.read())
-
-        self.cstack.append(base64.b64decode(img))
-
-    def undo(self):
-        if len(self.cstack) > 0:
-            self.cstack_top -= 1
-            im_file = BytesIO(self.cstack[self.cstack_top])
-            img = Image.open(im_file)
-
-            img.save(self.cpath)
+            self.add_command() 
+            self.cstack_top = 0           
             self.reset_canvas()
 
     def save_file(self):
@@ -185,6 +189,7 @@ class MainWindow(QMainWindow):
                 image.save(self.cpath)
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
+                self.add_command()
                 self.reset_canvas()
 
     def image_gray(self):
@@ -193,6 +198,7 @@ class MainWindow(QMainWindow):
         output.save(self.cpath)
         
         self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.add_command()
         self.reset_canvas()
 
     def image_invert(self):
@@ -201,6 +207,7 @@ class MainWindow(QMainWindow):
         output.save(self.cpath)
         
         self.statusBar().showMessage("Image successfully converted" ,3000)
+        self.add_command()
         self.reset_canvas()
 
     def image_contrast(self):
@@ -210,6 +217,7 @@ class MainWindow(QMainWindow):
         output.save(self.cpath)
 
         self.statusBar().showMessage("Image contrast changed" ,3000)
+        self.add_command()
         self.reset_canvas()
 
     def image_brightness(self):
@@ -220,6 +228,7 @@ class MainWindow(QMainWindow):
         output.save(self.cpath)
 
         self.statusBar().showMessage("Image brightness changed" ,3000)
+        self.add_command()
         self.reset_canvas()
 
     def contrast_dialog(self):
