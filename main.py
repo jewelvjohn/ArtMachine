@@ -4,10 +4,13 @@ import shutil
 
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
+
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QIcon, QPixmap, QFont
-from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, 
-                               QStatusBar, QLabel, QFileDialog, QInputDialog)
+from PySide6.QtGui import QAction, QIcon, QPixmap, QFont, QDoubleValidator, QValidator
+from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
+                               QLabel, QFileDialog, QInputDialog, QDialog, 
+                               QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, 
+                               QSlider)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -178,7 +181,8 @@ class MainWindow(QMainWindow):
         self.reset_canvas()
 
     def contrast_dialog(self):
-        i, ok = QInputDialog.getInt(self, "Set contrast", "Contrast(0-100)", 50, 0, 100, 1)
+        contrast = ApplicationDialogs()
+        i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 100)
 
         if ok:
             self.img_contrast = i/50
@@ -226,7 +230,75 @@ class MainWindow(QMainWindow):
         self.app.quit()
 
     def closeEvent(self, event):
-        os.remove(self.cpath)
+        if(os.path.exists(self.cpath)):
+            os.remove(self.cpath)
+
+class ApplicationDialogs(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet("QDialog {background: rgb(25, 25, 25);}")
+
+    def sliderDialog(self, initialValue, minimumValue, maximumValue, windowTitle, windowWidth, windowHeight):
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle(windowTitle)
+        self.setGeometry(700, 300, windowWidth, windowHeight)
+        self.setFixedSize(QSize(windowWidth, windowHeight))
+
+        self.slider = QSlider(Qt.Horizontal)
+        self.line = QLineEdit()
+
+        self.initialValue = initialValue
+
+        self.slider.setMinimum(minimumValue)
+        self.slider.setMaximum(maximumValue)
+        self.slider.setValue(initialValue)
+        self.slider.valueChanged.connect(self.changeValue)
+
+        self.line.setMaximumWidth(40)
+        self.line.setAlignment(Qt.AlignCenter)
+        self.line.setText(str(initialValue))
+        self.line.editingFinished.connect(self.integerValidating)
+
+        self.ok_button = QPushButton("Ok")
+        self.ok_button.clicked.connect(self.setValue)
+
+        layout = QVBoxLayout()
+        slider_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        slider_layout.addWidget(self.slider)
+        slider_layout.addWidget(self.line)
+
+        button_layout.addWidget(self.ok_button)
+
+        layout.addLayout(slider_layout)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+        self.show()
+        self.exec()
+
+        if self.return_value:
+            return self.slider.value(), bool(True)
+        
+        return 0, False
+        
+    def integerValidating(self):
+        validation_rule = QDoubleValidator(self.slider.minimum(), self.slider.maximum(), 0)
+        if validation_rule.validate(self.line.text(), 3)[0] == QValidator.Acceptable:
+            self.line.setFocus()
+            self.slider.setValue(int(self.line.text()))
+        else:
+            self.line.setText(str(self.initialValue))
+            self.slider.setValue(int(self.line.text()))
+
+    def changeValue(self):
+        self.line.setText(str(self.slider.value()))
+
+    def setValue(self):
+        self.return_value = True
+        self.accept()
 
 app = QApplication(sys.argv)
 window = MainWindow(app)
