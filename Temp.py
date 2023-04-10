@@ -8,11 +8,14 @@ from io import BytesIO
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction, QIcon, QPixmap, QFont, QDoubleValidator, QValidator
+from PySide6.QtCore import Qt, QSize, QRectF, QPoint, Signal
+from PySide6.QtGui import (QAction, QIcon, QPixmap, 
+                           QFont, QDoubleValidator, 
+                           QValidator, QBrush, QColor)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
-                               QLabel, QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
-                               QPushButton, QLineEdit, QSlider)
+                               QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
+                               QPushButton, QLineEdit, QSlider, QGraphicsView, 
+                               QGraphicsScene, QGraphicsPixmapItem, QFrame)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -21,6 +24,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Artmachine")
         self.setWindowIcon(QIcon("sprites\\Icon.png"))
         self.setGeometry(500, 150, 1000, 700)
+
+        self.viewer = Viewport(self)
 
         self.fpath = ()
         self.spath = ()
@@ -46,50 +51,50 @@ class MainWindow(QMainWindow):
         open_action = file_menu.addAction(QIcon("sprites\\File.png"), "Open")
         open_action.setShortcut('Ctrl+O')
         open_action.setStatusTip("To open an existing image file")
-        open_action.triggered.connect(self.open_file)
+        open_action.triggered.connect(self.openFile)
 
         save_action = file_menu.addAction(QIcon("sprites\\Save.png"), "Save")
         save_action.setShortcut('Ctrl+S')
         save_action.setStatusTip("To save the current file")
-        save_action.triggered.connect(self.save_file)
+        save_action.triggered.connect(self.saveFile)
 
         quit_action = file_menu.addAction(QIcon("sprites\\Close.png"), "Quit")
         quit_action.setShortcut('Ctrl+W')
-        quit_action.triggered.connect(self.quit_app)
+        quit_action.triggered.connect(self.quitApp)
 
         undo_action = edit_menu.addAction("Undo")
         undo_action.setShortcut('Ctrl+Z')
         undo_action.setStatusTip("Undo the last changes")
-        undo_action.triggered.connect(self.undo)
+        undo_action.triggered.connect(self.undoCommand)
 
         redo_action = edit_menu.addAction("Redo")
         redo_action.setShortcut('Ctrl+Shift+Z')
         redo_action.setStatusTip("Redo the undo changes")
-        redo_action.triggered.connect(self.redo)
+        redo_action.triggered.connect(self.redoCommand)
 
         settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
         settings_action.setStatusTip("Enter application settings")
 
         gray_action = image_menu.addAction("Grayscale")
         gray_action.setStatusTip("Converts the image into Grayscale")
-        gray_action.triggered.connect(self.image_gray)
+        gray_action.triggered.connect(self.imageGray)
 
         invert_action = image_menu.addAction("Invert")
         invert_action.setStatusTip("Inverts the image colors")
-        invert_action.triggered.connect(self.image_invert)
+        invert_action.triggered.connect(self.imageInvert)
 
         contrast_action = image_menu.addAction("Contrast")
         contrast_action.setStatusTip("Always you to modify the image contrast")
-        contrast_action.triggered.connect(self.contrast_dialog)
+        contrast_action.triggered.connect(self.contrastDialog)
 
         brightness_action = image_menu.addAction("Brightness")
         brightness_action.setStatusTip("Always you to modify the image brightness")
-        brightness_action.triggered.connect(self.brightness_dialog)
+        brightness_action.triggered.connect(self.brightnessDialog)
 
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
         reset_action.setStatusTip("Resets the image to fit the canvas")
-        reset_action.triggered.connect(self.reset_canvas)
+        reset_action.triggered.connect(self.setImage)
 
         about_action = help_menu.addAction("About")
         contact_action = help_menu.addAction("Contact")
@@ -108,56 +113,51 @@ class MainWindow(QMainWindow):
         rembg_action = QAction(QIcon("sprites\\Remove.png"), "Remove Background", self)
         rembg_action.setShortcut('Ctrl+B')
         rembg_action.setStatusTip("Removes the background of an image")
-        rembg_action.triggered.connect(self.rem_bg)
+        rembg_action.triggered.connect(self.removeBackground)
 
         draw_action = QAction(QIcon("sprites\\Draw.png"), "Draw", self)
         draw_action.setStatusTip("Starts converting the picture into drawing")
-        draw_action.triggered.connect(self.draw_image)
+        draw_action.triggered.connect(self.drawImage)
 
         tool_bar.addAction(draw_action)
         tool_bar.addAction(rembg_action)
         tool_bar.addAction(reset_action)
         tool_bar.addSeparator()
 
-        self.label = QLabel("Open an image(Ctrl + O)", self)
-        self.label.setFont(QFont("Arial", 24))
-        self.label.setStyleSheet("QLabel {color: rgb(72, 72, 72);}")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setMinimumSize(1, 1)
+        self.default_path = "X:\\Documents\\Assets\\Stuff\\References"
 
-        #self.default_path = os.path.expanduser('~') + "\\Downloads\\"
-        self.default_path = "X:\\Documents\\Assets\\Stuff\\References\\"
+        self.setCentralWidget(self.viewer)
 
-        self.setCentralWidget(self.label)
-
-    def add_command(self):
+    def addCommand(self):
         self.cstack_top += 1
         with open(self.cpath, "rb") as file:
             img = base64.b64encode(file.read())
 
         self.cstack.append(base64.b64decode(img))
 
-    def undo(self):
+    def undoCommand(self):
         if len(self.cstack) > 0 and self.cstack_top > 0:
             self.cstack_top -= 1
             im_file = BytesIO(self.cstack[self.cstack_top])
             img = Image.open(im_file)
 
             img.save(self.cpath)
-            self.reset_canvas()
+            self.setImage()
         else:
             self.statusBar().showMessage("Undo not available" ,3000)
-    def redo(self):
+
+    def redoCommand(self):
         if self.cstack_top + 1 < len(self.cstack):
             self.cstack_top += 1
             im_file = BytesIO(self.cstack[self.cstack_top])
             img = Image.open(im_file)
 
             img.save(self.cpath)
-            self.reset_canvas()
+            self.setImage()
         else:
             self.statusBar().showMessage("Redo not available" ,3000)
-    def open_file(self):
+
+    def openFile(self):
         self.drawn = False
         self.statusBar().showMessage("Openning a file..." ,3000)
 
@@ -169,11 +169,11 @@ class MainWindow(QMainWindow):
             self.fpath = path
             shutil.copy(self.fpath[0], self.cpath)
 
-            self.add_command() 
+            self.addCommand() 
             self.cstack_top = 0           
-            self.reset_canvas()
+            self.setImage()
 
-    def save_file(self):
+    def saveFile(self):
         self.statusBar().showMessage("Saving the file..." ,3000)
         path = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
 
@@ -183,8 +183,7 @@ class MainWindow(QMainWindow):
             self.spath = path
             shutil.copy(self.cpath, self.spath[0])
             
-
-    def draw_image(self):
+    def drawImage(self):
         if len(self.fpath) < 0:
             self.statusBar().showMessage("No image currently open!" ,3000)
         else:
@@ -201,38 +200,38 @@ class MainWindow(QMainWindow):
                 image.save(self.cpath)
 
                 self.statusBar().showMessage("Image successfully converted" ,3000)
-                self.add_command()
-                self.reset_canvas()
+                self.addCommand()
+                self.setImage()
 
-    def image_gray(self):
+    def imageGray(self):
         img = Image.open(self.cpath)
         output = img.convert('L')
         output.save(self.cpath)
         
         self.statusBar().showMessage("Image successfully converted" ,3000)
-        self.add_command()
-        self.reset_canvas()
+        self.addCommand()
+        self.setImage()
 
-    def image_invert(self):
+    def imageInvert(self):
         img = Image.open(self.cpath)
         output = ImageOps.invert(img)
         output.save(self.cpath)
         
         self.statusBar().showMessage("Image successfully converted" ,3000)
-        self.add_command()
-        self.reset_canvas()
+        self.addCommand()
+        self.setImage()
 
-    def image_contrast(self):
+    def imageContrast(self):
         img = Image.open(self.cpath)
         enhancer = ImageEnhance.Contrast(img)
         output = enhancer.enhance(self.img_contrast)
         output.save(self.cpath)
 
         self.statusBar().showMessage("Image contrast changed" ,3000)
-        self.add_command()
-        self.reset_canvas()
+        self.addCommand()
+        self.setImage()
 
-    def image_brightness(self):
+    def imageBrightness(self):
         img = Image.open(self.cpath)
         enhancer = ImageEnhance.Brightness(img)
         output = enhancer.enhance(self.img_brightness)
@@ -240,26 +239,26 @@ class MainWindow(QMainWindow):
         output.save(self.cpath)
 
         self.statusBar().showMessage("Image brightness changed" ,3000)
-        self.add_command()
-        self.reset_canvas()
+        self.addCommand()
+        self.setImage()
 
-    def contrast_dialog(self):
+    def contrastDialog(self):
         contrast = ApplicationDialogs()
         i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 100, True)
 
         if ok:
             self.img_contrast = i/50
-            self.image_contrast()
+            self.imageContrast()
 
-    def brightness_dialog(self):
+    def brightnessDialog(self):
         brightness = ApplicationDialogs()
         i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 100, True)
 
         if ok:
             self.img_brightness = i/50
-            self.image_brightness()
+            self.imageBrightness()
 
-    def rem_bg(self):
+    def removeBackground(self):
         input = Image.open(self.cpath)
         output = remove(input)
         output.save(self.cpath)
@@ -278,26 +277,12 @@ class MainWindow(QMainWindow):
             white.paste(output, (0,0), mask = output)
             white.save(self.cpath)
 
-        self.reset_canvas()
+        self.setImage()
 
-    def reset_canvas(self):
-        if len(self.fpath) == 0:
-            self.statusBar().showMessage("No image currently open!" ,3000)
-        else:
-            self.pixmap = QPixmap(self.cpath)
-            self.canvas_aspect_ratio = self.width() / self.height()
-            self.img_aspect_ratio = self.pixmap.width() / self.pixmap.height() 
+    def setImage(self):
+        self.viewer.setPhoto(QPixmap(self.cpath))
 
-            if self.img_aspect_ratio > self.canvas_aspect_ratio:
-                self.pixmap = self.pixmap.scaledToWidth(self.width() - self.canvas_margin // 4)
-            else:
-                self.pixmap = self.pixmap.scaledToHeight(self.height() - self.canvas_margin)
-
-            self.label.setPixmap(self.pixmap)
-            self.label.resize(self.width(), self.height())
-            self.statusBar().showMessage("Canvas view reset" ,3000)
-
-    def quit_app(self):
+    def quitApp(self):
         self.app.quit()
 
     def closeEvent(self, event):
@@ -372,6 +357,75 @@ class ApplicationDialogs(QDialog):
         self.return_value = True
         self.accept()
 
+class Viewport(QGraphicsView):
+    def __init__(self, parent):
+        super(Viewport, self).__init__(parent)
+        self._zoom = 0
+        self._empty = True
+        self._scene = QGraphicsScene(self)
+        self._photo = QGraphicsPixmapItem()
+        self._scene.addItem(self._photo)
+        self.setScene(self._scene)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
+        self.setFrameShape(QFrame.NoFrame)
+
+    def hasPhoto(self):
+        return not self._empty
+
+    def fitInView(self, scale=True):
+        rect = QRectF(self._photo.pixmap().rect())
+        if not rect.isNull():
+            self.setSceneRect(rect)
+            if self.hasPhoto():
+                unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
+                self.scale(1 / unity.width(), 1 / unity.height())
+                viewrect = self.viewport().rect()
+                scenerect = self.transform().mapRect(rect)
+                factor = min(viewrect.width() / scenerect.width(),
+                             viewrect.height() / scenerect.height())
+                self.scale(factor, factor)
+            self._zoom = 0
+
+    def setPhoto(self, pixmap=None):
+        self._zoom = 0
+        if pixmap and not pixmap.isNull():
+            self._empty = False
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self._photo.setPixmap(pixmap)
+        else:
+            self._empty = True
+            self.setDragMode(QGraphicsView.NoDrag)
+            self._photo.setPixmap(QPixmap())
+        self.fitInView()
+
+    def wheelEvent(self, event):
+        if self.hasPhoto():
+            if event.angleDelta().y() > 0:
+                factor = 1.25
+                self._zoom += 1
+            else:
+                factor = 0.8
+                self._zoom -= 1
+            if self._zoom > 0:
+                self.scale(factor, factor)
+            elif self._zoom == 0:
+                self.fitInView()
+            else:
+                self._zoom = 0
+
+    def toggleDragMode(self):
+        if self.dragMode() == QGraphicsView.ScrollHandDrag:
+            self.setDragMode(QGraphicsView.NoDrag)
+        elif not self._photo.pixmap().isNull():
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+
+    def mousePressEvent(self, event):
+        super(Viewport, self).mousePressEvent(event)
+    
 app = QApplication(sys.argv)
 window = MainWindow(app)
 window.setStyleSheet("QMainWindow {background: rgb(25, 25, 25);}")
