@@ -8,7 +8,7 @@ from io import BytesIO
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 
-from PySide6.QtCore import Qt, QSize, QRectF, QPoint, Signal
+from PySide6.QtCore import Qt, QSize, QRectF
 from PySide6.QtGui import (QAction, QIcon, QPixmap, 
                            QFont, QDoubleValidator, 
                            QValidator, QBrush, QColor)
@@ -26,14 +26,17 @@ class MainWindow(QMainWindow):
         self.setGeometry(500, 150, 1000, 700)
 
         self.viewer = Viewport(self)
+        
+        self.default_path = "X:\\Documents\\Assets\\Stuff\\References"
+        self.cache_path = "files\\data.png"
 
-        self.fpath = ()
-        self.spath = ()
+        self.open_path = ()
+        self.save_path = ()
+
         self.canvas_margin = int(100)
-        self.cpath = "files\\temp.png"
 
-        self.cstack_top = int(0)
-        self.cstack = []
+        self.command_stack_top = int(0)
+        self.command_stack = []
 
         self.pixmap = None
         self.rem_index = int(2)
@@ -45,6 +48,7 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("File")
         edit_menu = menu_bar.addMenu("Edit")
         image_menu = menu_bar.addMenu("Image")
+        filter_menu = menu_bar.addMenu("Filter")
         view_menu = menu_bar.addMenu("View")
         help_menu = menu_bar.addMenu("Help")
 
@@ -91,6 +95,14 @@ class MainWindow(QMainWindow):
         brightness_action.setStatusTip("Always you to modify the image brightness")
         brightness_action.triggered.connect(self.brightnessDialog)
 
+        draw_action = filter_menu.addAction(QIcon("sprites\\Draw.png"), "Draw")
+        draw_action.setStatusTip("Applies a drawing filter to the picture")
+        draw_action.triggered.connect(self.drawImage)
+
+        rembg_action = filter_menu.addAction(QIcon("sprites\\Remove.png"), "Remove Background")
+        rembg_action.setStatusTip("Tries to remove the background of the picture")
+        rembg_action.triggered.connect(self.removeBackground)
+        
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
         reset_action.setStatusTip("Resets the image to fit the canvas")
@@ -101,7 +113,7 @@ class MainWindow(QMainWindow):
         tool_bar = QToolBar("Toolbar")
         tool_bar.setIconSize(QSize(30, 30))
 
-        self.addToolBar(tool_bar)
+        self.addToolBar(Qt.LeftToolBarArea, tool_bar)
         status_bar = QStatusBar(self)
         status_bar.setStyleSheet("QStatusBar {color: rgb(128, 128, 128);}")
         self.setStatusBar(status_bar)
@@ -109,50 +121,52 @@ class MainWindow(QMainWindow):
         tool_bar.addAction(open_action)
         tool_bar.addAction(save_action)
 
-        rembg_action = QAction(QIcon("sprites\\Remove.png"), "Remove Background", self)
-        rembg_action.setShortcut('Ctrl+B')
-        rembg_action.setStatusTip("Removes the background of an image")
-        rembg_action.triggered.connect(self.removeBackground)
-
-        draw_action = QAction(QIcon("sprites\\Draw.png"), "Draw", self)
-        draw_action.setStatusTip("Starts converting the picture into drawing")
-        draw_action.triggered.connect(self.drawImage)
-
-        tool_bar.addAction(draw_action)
-        tool_bar.addAction(rembg_action)
-
-        self.default_path = "X:\\Documents\\Assets\\Stuff\\References"
 
         self.setCentralWidget(self.viewer)
 
     def addCommand(self):
-        self.cstack_top += 1
-        with open(self.cpath, "rb") as file:
+        with open(self.cache_path, "rb") as file:
             img = base64.b64encode(file.read())
 
-        self.cstack.append(base64.b64decode(img))
+        if self.command_stack_top == len(self.command_stack):
+            print("Top")
+            self.command_stack.append(base64.b64decode(img))
+            self.command_stack_top += 1
+
+        else:
+            self.command_stack[self.command_stack_top] = base64.b64decode(img)
+            self.command_stack_top += 1
+
+            self.command_stack = self.command_stack[:self.command_stack_top]
+
+
+        print("Add: "+str(self.command_stack_top))
 
     def undoCommand(self):
-        if len(self.cstack) > 0 and self.cstack_top > 0:
-            self.cstack_top -= 1
-            im_file = BytesIO(self.cstack[self.cstack_top])
+        if len(self.command_stack) > 0 and self.command_stack_top > 1:
+            self.command_stack_top -= 1
+            im_file = BytesIO(self.command_stack[self.command_stack_top - 1])
             img = Image.open(im_file)
 
-            img.save(self.cpath)
+            img.save(self.cache_path)
             self.setImage()
         else:
             self.statusBar().showMessage("Undo not available" ,3000)
 
+        print("Undo: "+str(self.command_stack_top))
+
     def redoCommand(self):
-        if self.cstack_top + 1 < len(self.cstack):
-            self.cstack_top += 1
-            im_file = BytesIO(self.cstack[self.cstack_top])
+        if self.command_stack_top < len(self.command_stack):
+            self.command_stack_top += 1
+            im_file = BytesIO(self.command_stack[self.command_stack_top - 1])
             img = Image.open(im_file)
 
-            img.save(self.cpath)
+            img.save(self.cache_path)
             self.setImage()
         else:
             self.statusBar().showMessage("Redo not available" ,3000)
+
+        print("Redo: "+str(self.command_stack_top))
 
     def openFile(self):
         self.statusBar().showMessage("Openning a file..." ,3000)
@@ -162,86 +176,101 @@ class MainWindow(QMainWindow):
         if path[0] == "":
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
-            self.fpath = path
-            shutil.copy(self.fpath[0], self.cpath)
+            self.open_path = path
+            shutil.copy(self.open_path[0], self.cache_path)
 
-            self.addCommand() 
-            self.cstack_top = 0           
+            self.addCommand()          
             self.setImage()
 
     def saveFile(self):
         self.statusBar().showMessage("Saving the file..." ,3000)
-        path = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.fpath[0], ), "PNG Files (*.png)")
+        path = QFileDialog.getSaveFileName(self, "Save File", os.path.dirname(self.open_path[0], ), "PNG Files (*.png)")
 
         if path[0] == "":
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
-            self.spath = path
-            shutil.copy(self.cpath, self.spath[0])
+            self.save_path = path
+            shutil.copy(self.cache_path, self.save_path[0])
 
     def imageGray(self):
-        img = Image.open(self.cpath)
-        output = img.convert('L')
-        output.save(self.cpath)
-        
-        self.statusBar().showMessage("Image successfully converted" ,3000)
-        self.addCommand()
-        self.setImage()
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            output = img.convert('L')
+            output.save(self.cache_path)
+            
+            self.statusBar().showMessage("Image adjustment successfully applied" ,3000)
+            self.addCommand()
+            self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
 
     def imageInvert(self):
-        img = Image.open(self.cpath)
-        output = ImageOps.invert(img)
-        output.save(self.cpath)
-        
-        self.statusBar().showMessage("Image successfully converted" ,3000)
-        self.addCommand()
-        self.setImage()
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            output = ImageOps.invert(img)
+            output.save(self.cache_path)
+            
+            self.statusBar().showMessage("Image adjustment successfully applied" ,3000)
+            self.addCommand()
+            self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
 
     def imageContrast(self):
-        img = Image.open(self.cpath)
-        enhancer = ImageEnhance.Contrast(img)
-        output = enhancer.enhance(self.img_contrast)
-        output.save(self.cpath)
+            img = Image.open(self.cache_path)
+            enhancer = ImageEnhance.Contrast(img)
+            output = enhancer.enhance(self.img_contrast)
+            output.save(self.cache_path)
 
-        self.statusBar().showMessage("Image contrast changed" ,3000)
-        self.addCommand()
-        self.setImage()
+            self.statusBar().showMessage("Image contrast changed" ,3000)
+            self.addCommand()
+            self.setImage()
 
     def imageBrightness(self):
-        img = Image.open(self.cpath)
-        enhancer = ImageEnhance.Brightness(img)
-        output = enhancer.enhance(self.img_brightness)
+            img = Image.open(self.cache_path)
+            enhancer = ImageEnhance.Brightness(img)
+            output = enhancer.enhance(self.img_brightness)
 
-        output.save(self.cpath)
+            output.save(self.cache_path)
 
-        self.statusBar().showMessage("Image brightness changed" ,3000)
-        self.addCommand()
-        self.setImage()
+            self.statusBar().showMessage("Image brightness changed" ,3000)
+            self.addCommand()
+            self.setImage()
 
     def contrastDialog(self):
-        contrast = ApplicationDialogs()
-        i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 100, True)
+        if self.viewer.hasPhoto():
+            contrast = ApplicationDialogs()
+            i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 100, True)
 
-        if ok:
-            self.img_contrast = i/50
-            self.imageContrast()
+            if ok:
+                self.img_contrast = i/50
+                self.imageContrast()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
 
     def brightnessDialog(self):
-        brightness = ApplicationDialogs()
-        i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 100, True)
+        if self.viewer.hasPhoto():
+            brightness = ApplicationDialogs()
+            i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 100, True)
 
-        if ok:
-            self.img_brightness = i/50
-            self.imageBrightness()
+            if ok:
+                self.img_brightness = i/50
+                self.imageBrightness()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
             
     def drawImage(self):
         if self.viewer.hasPhoto():
-            img = Image.open(self.cpath)
+            img = Image.open(self.cache_path)
             img_grey = img.convert('L')
             img_blur = img_grey.filter(ImageFilter.GaussianBlur(radius = 2.5))
             image = ImageMath.eval("convert(a * 256/b, 'L')", a=img_grey, b=img_blur)
 
-            image.save(self.cpath)
+            image.save(self.cache_path)
 
             self.statusBar().showMessage("Image filter successfully applied" ,3000)
             self.addCommand()
@@ -252,23 +281,23 @@ class MainWindow(QMainWindow):
 
     def removeBackground(self):
         if self.viewer.hasPhoto():
-            input = Image.open(self.cpath)
+            input = Image.open(self.cache_path)
             output = remove(input)
-            output.save(self.cpath)
+            output.save(self.cache_path)
 
             if self.rem_index == 0:
                 width, height = input.size
                 white = Image.new("RGB", (height, width), (255, 255, 255))
 
                 white.paste(output, (0,0), mask = output)
-                white.save(self.cpath)
+                white.save(self.cache_path)
                 
             elif self.rem_index == 1:
                 width, height = input.size
                 white = Image.new("RGB", (height, width), (0, 0, 0))
 
                 white.paste(output, (0,0), mask = output)
-                white.save(self.cpath)
+                white.save(self.cache_path)
 
             self.statusBar().showMessage("Image filter successfully applied" ,3000)
             self.addCommand()
@@ -279,14 +308,14 @@ class MainWindow(QMainWindow):
 
 
     def setImage(self):
-        self.viewer.setPhoto(QPixmap(self.cpath))
+        self.viewer.setPhoto(QPixmap(self.cache_path))
 
     def quitApp(self):
         self.app.quit()
 
     def closeEvent(self, event):
-        if os.path.exists(self.cpath):
-            os.remove(self.cpath)
+        if os.path.exists(self.cache_path):
+            os.remove(self.cache_path)
 
 class ApplicationDialogs(QDialog):
     def __init__(self):
