@@ -35,8 +35,8 @@ class MainWindow(QMainWindow):
 
         self.canvas_margin = int(100)
 
-        self.command_stack_top = int(0)
-        self.command_stack = []
+        self.uStack = []
+        self.rStack = []
 
         self.pixmap = None
         self.rem_index = int(2)
@@ -127,46 +127,21 @@ class MainWindow(QMainWindow):
     def addCommand(self):
         with open(self.cache_path, "rb") as file:
             img = base64.b64encode(file.read())
-
-        if self.command_stack_top == len(self.command_stack):
-            print("Top")
-            self.command_stack.append(base64.b64decode(img))
-            self.command_stack_top += 1
-
-        else:
-            self.command_stack[self.command_stack_top] = base64.b64decode(img)
-            self.command_stack_top += 1
-
-            self.command_stack = self.command_stack[:self.command_stack_top]
-
-
-        print("Add: "+str(self.command_stack_top))
+            self.uStack.append(base64.b64decode(img))
 
     def undoCommand(self):
-        if len(self.command_stack) > 0 and self.command_stack_top > 1:
-            self.command_stack_top -= 1
-            im_file = BytesIO(self.command_stack[self.command_stack_top - 1])
-            img = Image.open(im_file)
-
-            img.save(self.cache_path)
+        if len(self.uStack) > 1:
+            self.rStack.append(self.uStack.pop())
             self.setImage()
         else:
             self.statusBar().showMessage("Undo not available" ,3000)
 
-        print("Undo: "+str(self.command_stack_top))
-
     def redoCommand(self):
-        if self.command_stack_top < len(self.command_stack):
-            self.command_stack_top += 1
-            im_file = BytesIO(self.command_stack[self.command_stack_top - 1])
-            img = Image.open(im_file)
-
-            img.save(self.cache_path)
+        if len(self.rStack) > 0:
+            self.uStack.append(self.rStack.pop())
             self.setImage()
         else:
             self.statusBar().showMessage("Redo not available" ,3000)
-
-        print("Redo: "+str(self.command_stack_top))
 
     def openFile(self):
         self.statusBar().showMessage("Openning a file..." ,3000)
@@ -308,6 +283,9 @@ class MainWindow(QMainWindow):
 
 
     def setImage(self):
+        im_file = BytesIO(self.uStack[-1])
+        img = Image.open(im_file)
+        img.save(self.cache_path)
         self.viewer.setPhoto(QPixmap(self.cache_path))
 
     def quitApp(self):
