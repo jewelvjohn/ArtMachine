@@ -26,6 +26,10 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
         self.setGeometry(500, 150, 1000, 700)
 
+        tool_bar = QToolBar("Toolbar")
+        status_bar = QStatusBar(self)
+        menu_bar = self.menuBar()
+
         self.viewer = Viewport(self)
         
         self.default_path = "X:\\Documents\\Assets\\Stuff\\References"
@@ -43,8 +47,32 @@ class MainWindow(QMainWindow):
         self.rem_index = int(2)
         self.img_contrast = float(1.5)
         self.img_brightness = float(1.5)
+        tool_bar.setStyleSheet("""
+                                QToolBar {
+                                    background-color: #323232;
+                                    border: none;
+                                }
+                                QToolButton {
+                                    background-color: transparent;
+                                    color: #ffffff;
+                                    border: none;
+                                    padding: 6px 6px;
+                                    font-size: 16px;
+                                }
+                                QToolButton:hover {
+                                    background-color: #505050;
+                                }
+                                QToolButton:pressed {
+                                    background-color: #727272;
+                                }
+                                QToolButton::icon {
+                                    width: 32px;
+                                    height: 32px;
+                                }
+                            """)
+        
+        status_bar.setStyleSheet("QStatusBar {color: rgb(128, 128, 128);}")
 
-        menu_bar = self.menuBar()
         menu_bar.setStyleSheet("""
                                 QMenuBar {
                                     background-color: #323232;
@@ -136,17 +164,11 @@ class MainWindow(QMainWindow):
 
         about_action = help_menu.addAction("About")
 
-        tool_bar = QToolBar("Toolbar")
-        tool_bar.setIconSize(QSize(30, 30))
-
-        self.addToolBar(Qt.LeftToolBarArea, tool_bar)
-        status_bar = QStatusBar(self)
-        status_bar.setStyleSheet("QStatusBar {color: rgb(128, 128, 128);}")
+        self.addToolBar(Qt.RightToolBarArea, tool_bar)
         self.setStatusBar(status_bar)
 
         tool_bar.addAction(open_action)
         tool_bar.addAction(save_action)
-
 
         self.setCentralWidget(self.viewer)
 
