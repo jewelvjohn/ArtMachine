@@ -23,6 +23,7 @@ class MainWindow(QMainWindow):
         self.app = app
         self.setWindowTitle("Artmachine")
         self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
         self.setGeometry(500, 150, 1000, 700)
 
         self.viewer = Viewport(self)
@@ -44,6 +45,31 @@ class MainWindow(QMainWindow):
         self.img_brightness = float(1.5)
 
         menu_bar = self.menuBar()
+        menu_bar.setStyleSheet("""
+                                QMenuBar {
+                                    background-color: #323232;
+                                    color: #ffffff;
+                                    font-size: 16px;
+                                }
+                                QMenuBar::item {
+                                    background-color: transparent;
+                                    padding: 4px 10px;
+                                }
+                                QMenuBar::item:selected {
+                                    background-color: #505050;
+                                }
+                                QMenu {
+                                    background-color: #2f2f2f;
+                                    border: 1px solid #3a3a3a;
+                                }
+                                QMenu::item {
+                                    color: #ffffff;
+                                    padding: 5px 20px;
+                                }
+                                QMenu::item:selected {
+                                    background-color: #363636;
+                                }
+                            """)
 
         file_menu = menu_bar.addMenu("File")
         edit_menu = menu_bar.addMenu("Edit")
@@ -434,6 +460,5 @@ class Viewport(QGraphicsView):
     
 app = QApplication(sys.argv)
 window = MainWindow(app)
-window.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
 window.show()
 app.exec()
