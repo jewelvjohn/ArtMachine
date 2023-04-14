@@ -343,7 +343,6 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
 
-
     def setImage(self):
         im_file = BytesIO(self.uStack[-1])
         img = Image.open(im_file)
@@ -561,11 +560,16 @@ class ApplicationDialogs(QDialog):
 class Viewport(QGraphicsView):
     def __init__(self, parent):
         super(Viewport, self).__init__(parent)
+        pixmap = QPixmap("files\\Openning.png")
+        pixmap = pixmap.scaled(pixmap.width()/1.6, pixmap.height()/1.6, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
         self._zoom = 0
         self._empty = True
         self._scene = QGraphicsScene(self)
         self._photo = QGraphicsPixmapItem()
+        self._photo.setPixmap(pixmap)
         self._scene.addItem(self._photo)
+
         self.setScene(self._scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
@@ -656,6 +660,7 @@ class Viewport(QGraphicsView):
             # Get the file path of the dropped image
             file_path = event.mimeData().urls()[0].toLocalFile()
             self.parent().openFile(file_path)
+            self.setAcceptDrops(False)
         else:
             event.ignore()
     
