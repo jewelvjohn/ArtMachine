@@ -8,7 +8,7 @@ from io import BytesIO
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 
-from PySide6.QtCore import Qt, QSize, QRectF
+from PySide6.QtCore import Qt, QSize, QPointF, QRectF
 from PySide6.QtGui import (QAction, QIcon, QPixmap, 
                            QFont, QDoubleValidator, 
                            QValidator, QBrush, QColor)
@@ -107,7 +107,7 @@ class MainWindow(QMainWindow):
         open_action = file_menu.addAction(QIcon("sprites\\File.png"), "Open")
         open_action.setShortcut('Ctrl+O')
         open_action.setStatusTip("To open an existing image file")
-        open_action.triggered.connect(self.openFile)
+        open_action.triggered.connect(self.openFileDialog)
 
         save_action = file_menu.addAction(QIcon("sprites\\Save.png"), "Save")
         save_action.setShortcut('Ctrl+S')
@@ -189,7 +189,7 @@ class MainWindow(QMainWindow):
         else:
             self.statusBar().showMessage("Redo not available" ,3000)
 
-    def openFile(self):
+    def openFileDialog(self):
         self.statusBar().showMessage("Openning a file..." ,3000)
 
         path = QFileDialog.getOpenFileName(self, "Open File", self.default_path, "All Files (*);; PNG Files (*.png);; JPG Files (*.jpg)")
@@ -198,10 +198,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("File dialog closed" ,3000)
         else:
             self.open_path = path
-            shutil.copy(self.open_path[0], self.cache_path)
+            self.openFile(self.open_path[0])
 
-            self.addCommand()          
-            self.setImage()
+    def openFile(self, path):
+        shutil.copy(path, self.cache_path)
+
+        self.addCommand()          
+        self.setImage()
 
     def saveFile(self):
         self.statusBar().showMessage("Saving the file..." ,3000)
@@ -570,6 +573,7 @@ class Viewport(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
         self.setFrameShape(QFrame.NoFrame)
+        self.setAcceptDrops(True)
 
     def hasPhoto(self):
         return not self._empty
@@ -631,6 +635,29 @@ class Viewport(QGraphicsView):
 
     def mousePressEvent(self, event):
         super(Viewport, self).mousePressEvent(event)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasImage:
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasImage:
+            event.setDropAction(Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        if event.mimeData().hasImage:
+            event.setDropAction(Qt.CopyAction)
+            event.accept()
+            # Get the file path of the dropped image
+            file_path = event.mimeData().urls()[0].toLocalFile()
+            self.parent().openFile(file_path)
+        else:
+            event.ignore()
     
 app = QApplication(sys.argv)
 window = MainWindow(app)
