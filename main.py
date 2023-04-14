@@ -15,7 +15,8 @@ from PySide6.QtGui import (QAction, QIcon, QPixmap,
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
-                               QGraphicsScene, QGraphicsPixmapItem, QFrame)
+                               QGraphicsScene, QGraphicsPixmapItem, QFrame, 
+                               QRadioButton, QGroupBox)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
         self.rem_index = int(2)
         self.img_contrast = float(1.5)
         self.img_brightness = float(1.5)
+        tool_bar.setIconSize(QSize(32, 32))
         tool_bar.setStyleSheet("""
                                 QToolBar {
                                     background-color: #323232;
@@ -64,10 +66,6 @@ class MainWindow(QMainWindow):
                                 }
                                 QToolButton:pressed {
                                     background-color: #727272;
-                                }
-                                QToolButton::icon {
-                                    width: 32px;
-                                    height: 32px;
                                 }
                             """)
         
@@ -155,7 +153,7 @@ class MainWindow(QMainWindow):
 
         rembg_action = filter_menu.addAction(QIcon("sprites\\Remove.png"), "Remove Background")
         rembg_action.setStatusTip("Tries to remove the background of the picture")
-        rembg_action.triggered.connect(self.removeBackground)
+        rembg_action.triggered.connect(self.rem_bgDialog)
         
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
@@ -261,30 +259,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Image brightness changed" ,3000)
             self.addCommand()
             self.setImage()
-
-    def contrastDialog(self):
-        if self.viewer.hasPhoto():
-            contrast = ApplicationDialogs()
-            i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 100, True)
-
-            if ok:
-                self.img_contrast = i/50
-                self.imageContrast()
-
-        else:
-            self.statusBar().showMessage("No image currently open!" ,3000)
-
-    def brightnessDialog(self):
-        if self.viewer.hasPhoto():
-            brightness = ApplicationDialogs()
-            i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 100, True)
-
-            if ok:
-                self.img_brightness = i/50
-                self.imageBrightness()
-
-        else:
-            self.statusBar().showMessage("No image currently open!" ,3000)
             
     def drawImage(self):
         if self.viewer.hasPhoto():
@@ -308,14 +282,14 @@ class MainWindow(QMainWindow):
             output = remove(input)
             output.save(self.cache_path)
 
-            if self.rem_index == 0:
+            if self.rem_index == 1:
                 width, height = input.size
                 white = Image.new("RGB", (height, width), (255, 255, 255))
 
                 white.paste(output, (0,0), mask = output)
                 white.save(self.cache_path)
                 
-            elif self.rem_index == 1:
+            elif self.rem_index == 2:
                 width, height = input.size
                 white = Image.new("RGB", (height, width), (0, 0, 0))
 
@@ -325,6 +299,43 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Image filter successfully applied" ,3000)
             self.addCommand()
             self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def contrastDialog(self):
+        if self.viewer.hasPhoto():
+            contrast = ApplicationDialogs()
+            i, ok = contrast.sliderDialog(50, 0, 100, "Set Contrast", 300, 120, True)
+
+            if ok:
+                self.img_contrast = i/50
+                self.imageContrast()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def brightnessDialog(self):
+        if self.viewer.hasPhoto():
+            brightness = ApplicationDialogs()
+            i, ok = brightness.sliderDialog(50, 0, 100, "Set Brightness", 300, 120, True)
+
+            if ok:
+                self.img_brightness = i/50
+                self.imageBrightness()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def rem_bgDialog(self):
+        if self.viewer.hasPhoto():
+            rem_bg = ApplicationDialogs()
+            buttonNames = [ "Trasparent", "White", "Black"]
+            i, ok = rem_bg.radioDialog("Choose background color", 3, buttonNames, "Remove Background", 300, 200, True)
+
+            if ok:
+                self.rem_index = i
+                self.removeBackground()
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
@@ -355,8 +366,10 @@ class ApplicationDialogs(QDialog):
         self.setFixedSize(QSize(windowWidth, windowHeight))
         self.setModal(modal)
 
+
         self.slider = QSlider(Qt.Horizontal)
         self.line = QLineEdit()
+        self.ok_button = QPushButton("Ok")
 
         self.initialValue = initialValue
 
@@ -370,8 +383,47 @@ class ApplicationDialogs(QDialog):
         self.line.setText(str(initialValue))
         self.line.editingFinished.connect(self.integerValidating)
 
-        self.ok_button = QPushButton("Ok")
-        self.ok_button.clicked.connect(self.setValue)
+        self.ok_button.clicked.connect(self.setSliderValue)
+
+        self.slider.setStyleSheet(
+                                    "QSlider::groove:horizontal {"
+                                    "height: 8px;"
+                                    "background: #404040;"
+                                    "border-radius: 8px;}"
+
+                                    "QSlider::handle:horizontal {"
+                                    "background-color: #929292;"
+                                    "width: 20px;"
+                                    "height: 20px;"
+                                    "margin-top: -6px;"
+                                    "margin-bottom: -6px;"
+                                    "border-radius: 20px;}"
+                                )
+        
+        self.line.setStyleSheet(
+                                    "background-color: #404040; border: none; color: #CCCCCC; border-radius: 20px;"
+                                )
+        
+        self.ok_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
 
         layout = QVBoxLayout()
         slider_layout = QHBoxLayout()
@@ -379,21 +431,23 @@ class ApplicationDialogs(QDialog):
 
         slider_layout.addWidget(self.slider)
         slider_layout.addWidget(self.line)
-
         button_layout.addWidget(self.ok_button)
 
         layout.addLayout(slider_layout)
+        layout.addSpacing(5)
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
+
+        self.return_value = False
 
         self.show()
         self.exec()
 
         if self.return_value:
-            return self.slider.value(), bool(True)
-        
-        return 0, False
+            return self.slider.value(), True
+        else:
+            return 0, False
         
     def integerValidating(self):
         validation_rule = QDoubleValidator(self.slider.minimum(), self.slider.maximum(), 0)
@@ -407,8 +461,98 @@ class ApplicationDialogs(QDialog):
     def changeValue(self):
         self.line.setText(str(self.slider.value()))
 
-    def setValue(self):
+    def setSliderValue(self):
         self.return_value = True
+        self.accept()
+
+    def radioDialog(self, caption, count, buttonNames, windowTitle, windowWidth, windowHeight, modal):
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle(windowTitle)
+        self.setGeometry(700, 300, windowWidth, windowHeight)
+        self.setFixedSize(QSize(windowWidth, windowHeight))
+        self.setModal(modal)
+
+        self.radioValue = 0
+        self.radioCount = count
+
+        self.radioButtons = []
+        radioLayout = QVBoxLayout()
+        self.radioButtonGroup = QGroupBox(caption)
+        radioLayout.addSpacing(15)
+
+        for i in range(0, count):
+            radioButton = QRadioButton(buttonNames[i])
+            radioButton.setStyleSheet(
+                                        """
+                                        QRadioButton {
+                                            color: #CCCCCC;
+                                        }
+                                        """
+                                    )
+            self.radioButtons.append(radioButton)
+            radioLayout.addWidget(self.radioButtons[i])
+        self.radioButtons[0].setChecked(True)
+
+        self.radioButtonGroup.setLayout(radioLayout)
+        self.radioButtonGroup.setStyleSheet(
+                                                """
+                                                QGroupBox {
+                                                    color: #CCCCCC;
+                                                    border: 2px solid #CCCCCC
+                                                }
+                                                """
+                                            )
+
+        self.ok_button = QPushButton("Ok")
+        self.ok_button.clicked.connect(self.setRadioValue)
+        self.ok_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
+        
+        layout = QVBoxLayout()
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.ok_button)
+
+        layout.addWidget(self.radioButtonGroup)
+        layout.addSpacing(5)
+        layout.addLayout(button_layout)
+
+        self.setLayout(layout)
+
+        self.return_value = False
+
+        self.show()
+        self.exec()
+
+        if self.return_value:
+            return self.radioValue, True
+        else:
+            return 0, False
+
+    def setRadioValue(self):
+        self.return_value = True
+
+        for i in range(0, self.radioCount):
+            if self.radioButtons[i].isChecked():
+                self.radioValue = i
+
         self.accept()
 
 class Viewport(QGraphicsView):
@@ -450,6 +594,7 @@ class Viewport(QGraphicsView):
             self._empty = False
             self.setDragMode(QGraphicsView.ScrollHandDrag)
             self._photo.setPixmap(pixmap)
+            self._size = self.size() 
         else:
             self._empty = True
             self.setDragMode(QGraphicsView.NoDrag)
@@ -459,17 +604,24 @@ class Viewport(QGraphicsView):
     def wheelEvent(self, event):
         if self.hasPhoto():
             if event.angleDelta().y() > 0:
-                factor = 1.25
+                factor = 1.1
                 self._zoom += 1
             else:
-                factor = 0.8
+                factor = 0.9
                 self._zoom -= 1
+
             if self._zoom > 0:
-                self.scale(factor, factor)
+                if self._zoom < 20:
+                    self.scale(factor, factor)
+                else:
+                    self._zoom = 20
             elif self._zoom == 0:
                 self.fitInView()
             else:
-                self._zoom = 0
+                if self._zoom > -20:
+                    self.scale(factor, factor)
+                else:
+                    self._zoom = -20
 
     def toggleDragMode(self):
         if self.dragMode() == QGraphicsView.ScrollHandDrag:
