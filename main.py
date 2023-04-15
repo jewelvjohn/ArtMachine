@@ -11,7 +11,8 @@ from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 from PySide6.QtCore import Qt, QSize, QPointF, QRectF
 from PySide6.QtGui import (QAction, QIcon, QPixmap, 
                            QFont, QDoubleValidator, 
-                           QValidator, QBrush, QColor)
+                           QValidator, QBrush, QColor,
+                           QFontDatabase)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
@@ -26,6 +27,9 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon("sprites\\Icon.png"))
         self.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
         self.setGeometry(500, 150, 1000, 700)
+
+        font_id = QFontDatabase.addApplicationFont("C:\\Users\\Jewel John\\Documents\\ArtMachine\\fonts\\Poppins-Regular.ttf")
+        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
 
         tool_bar = QToolBar("Toolbar")
         status_bar = QStatusBar(self)
@@ -45,9 +49,11 @@ class MainWindow(QMainWindow):
         self.rStack = []
 
         self.pixmap = None
+        self.gamma = float(1)
         self.rem_index = int(2)
         self.img_contrast = float(1.5)
         self.img_brightness = float(1.5)
+
         tool_bar.setIconSize(QSize(32, 32))
         tool_bar.setStyleSheet("""
                                 QToolBar {
@@ -56,9 +62,10 @@ class MainWindow(QMainWindow):
                                 }
                                 QToolButton {
                                     background-color: transparent;
-                                    color: #ffffff;
+                                    color: #CCCCCC;
                                     border: none;
                                     padding: 6px 6px;
+                                    font-family: "{font_family}";
                                     font-size: 16px;
                                 }
                                 QToolButton:hover {
@@ -74,7 +81,8 @@ class MainWindow(QMainWindow):
         menu_bar.setStyleSheet("""
                                 QMenuBar {
                                     background-color: #323232;
-                                    color: #ffffff;
+                                    color: #CCCCCC;
+                                    font-family: "{font_family}";
                                     font-size: 16px;
                                 }
                                 QMenuBar::item {
@@ -89,7 +97,7 @@ class MainWindow(QMainWindow):
                                     border: 1px solid #3a3a3a;
                                 }
                                 QMenu::item {
-                                    color: #ffffff;
+                                    color: #CCCCCC;
                                     padding: 5px 20px;
                                 }
                                 QMenu::item:selected {
@@ -140,12 +148,16 @@ class MainWindow(QMainWindow):
         invert_action.triggered.connect(self.imageInvert)
 
         contrast_action = image_menu.addAction("Contrast")
-        contrast_action.setStatusTip("Always you to modify the image contrast")
+        contrast_action.setStatusTip("Allows you to modify the image contrast")
         contrast_action.triggered.connect(self.contrastDialog)
 
         brightness_action = image_menu.addAction("Brightness")
-        brightness_action.setStatusTip("Always you to modify the image brightness")
+        brightness_action.setStatusTip("Allows you to modify the image brightness")
         brightness_action.triggered.connect(self.brightnessDialog)
+
+        gamma_action = image_menu.addAction("Gamma")
+        gamma_action.setStatusTip("Allows you to modify the image gamma")
+        gamma_action.triggered.connect(self.gammaDialog)
 
         draw_action = filter_menu.addAction(QIcon("sprites\\Draw.png"), "Draw")
         draw_action.setStatusTip("Applies a drawing filter to the picture")
@@ -262,6 +274,16 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Image brightness changed" ,3000)
             self.addCommand()
             self.setImage()
+
+    def imageGamma(self):
+            img = Image.open(self.cache_path)
+            output = ImageOps.adjust_gamma(img, self.gamma)
+
+            output.save(self.cache_path)
+
+            self.statusBar().showMessage("Image gamma changed" ,3000)
+            self.addCommand()
+            self.setImage()
             
     def drawImage(self):
         if self.viewer.hasPhoto():
@@ -326,6 +348,18 @@ class MainWindow(QMainWindow):
             if ok:
                 self.img_brightness = i/50
                 self.imageBrightness()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def gammaDialog(self):
+        if self.viewer.hasPhoto():
+            gamma = ApplicationDialogs()
+            i, ok = gamma.sliderDialog(0, -100, 100, "Set Gamma", 300, 120, True)
+
+            if ok:
+                self.gamma = i/50
+                self.imageGamma()
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
