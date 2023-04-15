@@ -126,12 +126,12 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut('Ctrl+W')
         quit_action.triggered.connect(self.quitApp)
 
-        undo_action = edit_menu.addAction("Undo")
+        undo_action = edit_menu.addAction(QIcon("sprites\\Undo.png"),"Undo")
         undo_action.setShortcut('Ctrl+Z')
         undo_action.setStatusTip("Undo the last changes")
         undo_action.triggered.connect(self.undoCommand)
 
-        redo_action = edit_menu.addAction("Redo")
+        redo_action = edit_menu.addAction(QIcon("sprites\\Redo.png"),"Redo")
         redo_action.setShortcut('Ctrl+Shift+Z')
         redo_action.setStatusTip("Redo the undo changes")
         redo_action.triggered.connect(self.redoCommand)
@@ -155,10 +155,6 @@ class MainWindow(QMainWindow):
         brightness_action.setStatusTip("Allows you to modify the image brightness")
         brightness_action.triggered.connect(self.brightnessDialog)
 
-        gamma_action = image_menu.addAction("Gamma")
-        gamma_action.setStatusTip("Allows you to modify the image gamma")
-        gamma_action.triggered.connect(self.gammaDialog)
-
         draw_action = filter_menu.addAction(QIcon("sprites\\Draw.png"), "Draw")
         draw_action.setStatusTip("Applies a drawing filter to the picture")
         draw_action.triggered.connect(self.drawImage)
@@ -166,6 +162,16 @@ class MainWindow(QMainWindow):
         rembg_action = filter_menu.addAction(QIcon("sprites\\Remove.png"), "Remove Background")
         rembg_action.setStatusTip("Tries to remove the background of the picture")
         rembg_action.triggered.connect(self.rem_bgDialog)
+
+        zoomIn_action = view_menu.addAction(QIcon("sprites\\ZoomIn.png"), "Zoom In")
+        zoomIn_action.setShortcut('Ctrl+]')
+        zoomIn_action.setStatusTip("Zooms into the canvas view")
+        zoomIn_action.triggered.connect(self.viewer.zoomIn)
+
+        zoomOut_action = view_menu.addAction(QIcon("sprites\\ZoomOut.png"), "Zoom Out")
+        zoomOut_action.setShortcut('Ctrl+[')
+        zoomOut_action.setStatusTip("Zooms out of the canvas view")
+        zoomOut_action.triggered.connect(self.viewer.zoomOut)
         
         reset_action = view_menu.addAction(QIcon("sprites\\Reset.png"), "Reset")
         reset_action.setShortcut('Ctrl+R')
@@ -274,16 +280,6 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Image brightness changed" ,3000)
             self.addCommand()
             self.setImage()
-
-    def imageGamma(self):
-            img = Image.open(self.cache_path)
-            output = ImageOps.adjust_gamma(img, self.gamma)
-
-            output.save(self.cache_path)
-
-            self.statusBar().showMessage("Image gamma changed" ,3000)
-            self.addCommand()
-            self.setImage()
             
     def drawImage(self):
         if self.viewer.hasPhoto():
@@ -348,18 +344,6 @@ class MainWindow(QMainWindow):
             if ok:
                 self.img_brightness = i/50
                 self.imageBrightness()
-
-        else:
-            self.statusBar().showMessage("No image currently open!" ,3000)
-
-    def gammaDialog(self):
-        if self.viewer.hasPhoto():
-            gamma = ApplicationDialogs()
-            i, ok = gamma.sliderDialog(0, -100, 100, "Set Gamma", 300, 120, True)
-
-            if ok:
-                self.gamma = i/50
-                self.imageGamma()
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
@@ -646,24 +630,39 @@ class Viewport(QGraphicsView):
     def wheelEvent(self, event):
         if self.hasPhoto():
             if event.angleDelta().y() > 0:
-                factor = 1.1
+                self.zoomFactor = 1.1
                 self._zoom += 1
             else:
-                factor = 0.9
+                self.zoomFactor = 0.9
                 self._zoom -= 1
+            
+            self.zoomCheck()
 
-            if self._zoom > 0:
-                if self._zoom < 20:
-                    self.scale(factor, factor)
-                else:
-                    self._zoom = 20
-            elif self._zoom == 0:
-                self.fitInView()
+
+    def zoomIn(self):
+        self.zoomFactor = 1.1
+        self._zoom += 1
+        self.zoomCheck()
+
+    def zoomOut(self):
+        self.zoomFactor = 0.9
+        self._zoom -= 1
+        self.zoomCheck()
+
+    def zoomCheck(self):
+        if self._zoom > 0:
+            if self._zoom < 20:
+                self.scale(self.zoomFactor, self.zoomFactor)
             else:
-                if self._zoom > -20:
-                    self.scale(factor, factor)
-                else:
-                    self._zoom = -20
+                self._zoom = 20
+        elif self._zoom == 0:
+            self.fitInView()
+        else:
+            if self._zoom > -20:
+                self.scale(self.zoomFactor, self.zoomFactor)
+            else:
+                self._zoom = -20
+
 
     def toggleDragMode(self):
         if self.dragMode() == QGraphicsView.ScrollHandDrag:
