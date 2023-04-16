@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
 
         file_menu = menu_bar.addMenu("File")
         edit_menu = menu_bar.addMenu("Edit")
+        transform_menu = menu_bar.addMenu("Transform")
         image_menu = menu_bar.addMenu("Image")
         filter_menu = menu_bar.addMenu("Filter")
         view_menu = menu_bar.addMenu("View")
@@ -138,6 +139,14 @@ class MainWindow(QMainWindow):
 
         settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
         settings_action.setStatusTip("Enter application settings")
+
+        rotate_clockwise_action = transform_menu.addAction(QIcon("sprites\\Forward.png"), "Rotate 90 Clockwise") 
+        rotate_clockwise_action.setStatusTip("Rotate the image 90 clockwise")
+        rotate_clockwise_action.triggered.connect(self.rotateClockwise)
+
+        rotate_anticlockwise_action = transform_menu.addAction(QIcon("sprites\\Backward.png"), "Rotate 90 Anti-Clockwise")
+        rotate_anticlockwise_action.setStatusTip("Rotate the image 90 Anti-Clockwise")
+        rotate_anticlockwise_action.triggered.connect(self.rotateAnticlockwise)
 
         gray_action = image_menu.addAction("Grayscale")
         gray_action.setStatusTip("Converts the image into Grayscale")
@@ -357,6 +366,34 @@ class MainWindow(QMainWindow):
             if ok:
                 self.rem_index = i
                 self.removeBackground()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def rotateClockwise(self):
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            rotated_img = img.rotate(-90)
+
+            rotated_img.save(self.cache_path)
+
+            self.statusBar().showMessage("Image rotation successfully applied" ,3000)
+            self.addCommand()
+            self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def rotateAnticlockwise(self):
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            rotated_img = img.rotate(90)
+
+            rotated_img.save(self.cache_path)
+
+            self.statusBar().showMessage("Image rotation successfully applied" ,3000)
+            self.addCommand()
+            self.setImage()
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
