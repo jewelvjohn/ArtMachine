@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar,
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
                                QGraphicsScene, QGraphicsPixmapItem, QFrame, 
-                               QRadioButton, QGroupBox, QGraphicsRectItem)
+                               QRadioButton, QGroupBox, QGraphicsRectItem, 
+                               QLabel)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -28,7 +29,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
         self.setGeometry(500, 150, 1000, 700)
 
-        font_id = QFontDatabase.addApplicationFont("C:\\Users\\Jewel John\\Documents\\ArtMachine\\fonts\\Poppins-Regular.ttf")
+        font_id = QFontDatabase.addApplicationFont("fonts\\Poppins-Regular.ttf")
         font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
 
         tool_bar = QToolBar("Toolbar")
@@ -155,6 +156,10 @@ class MainWindow(QMainWindow):
         flip_verical_action = transform_menu.addAction(QIcon("sprites\\Vertical.png"), "Flip Vertical")
         flip_verical_action.setStatusTip("Flip the image vertically")
         flip_verical_action.triggered.connect(self.flipVertical)
+
+        crop_image_action = transform_menu.addAction(QIcon("sprites\\Vertical.png"), "Crop Image")
+        crop_image_action.setStatusTip("Dialog for cropping the image")
+        crop_image_action.triggered.connect(self.cropDialog)
 
         gray_action = image_menu.addAction("Grayscale")
         gray_action.setStatusTip("Converts the image into Grayscale")
@@ -377,6 +382,16 @@ class MainWindow(QMainWindow):
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def cropDialog(self):
+        if self.viewer.hasPhoto():
+            crop_widget = CropWidget()
+            cropped = crop_widget.callCropDialog("Crop Image", 900, 600, True)
+
+            if cropped:
+                self.statusBar().showMessage("Image successfully cropped" ,3000)
+                self.addCommand()
+                self.setImage()
 
     def rotateClockwise(self):
         if self.viewer.hasPhoto():
@@ -772,6 +787,277 @@ class Viewport(QGraphicsView):
         else:
             event.ignore()
     
+class CropView(QGraphicsView):
+    def __init__(self):
+        super().__init__()
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.rect_item = None
+        self.scene = QGraphicsScene(self)
+        self.setScene(self.scene)
+        self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
+
+        self.pixmap_item = QGraphicsPixmapItem()
+        self.scene.addItem(self.pixmap_item)
+
+
+    def setPhoto(self, pixmap=None):
+        if pixmap and not pixmap.isNull():
+            self._empty = False
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.pixmap_item.setPixmap(pixmap)
+            self._size = self.size() 
+        else:
+            self._empty = True
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.pixmap_item.setPixmap(QPixmap())
+        self.fitInView()
+
+    def fitInView(self, scale=True):
+        rect = QRectF(self.pixmap_item.pixmap().rect())
+        if not rect.isNull():
+            self.setSceneRect(rect)
+
+            unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
+            self.scale(1 / unity.width(), 1 / unity.height())
+            viewrect = self.viewport().rect()
+            scenerect = self.transform().mapRect(rect)
+            factor = min(viewrect.width() / scenerect.width(),
+                            viewrect.height() / scenerect.height())
+            self.scale(factor, factor)
+    
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.setDragMode(QGraphicsView.NoDrag)
+            
+            pos = self.mapToScene(event.position().toPoint())
+
+            self.rect_item = QGraphicsRectItem(pos.x(), pos.y(), 0, 0)
+            pen = QPen(QColor(255, 255, 255, 0))
+            pen.setWidth(2)
+            self.rect_item.setPen(pen)
+            brush = QBrush(QColor(255, 255, 255, 130))
+            self.rect_item.setBrush(brush)
+            self.scene.addItem(self.rect_item)
+    
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self.rect_item is not None:
+            rect = self.rect_item.rect()
+
+            rect.setBottomRight(self.mapToScene(event.position().toPoint()))
+            self.rect_item.setRect(rect.normalized())
+    
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        if self.rect_item is not None:
+            pen = QPen(Qt.white)
+            pen.setWidth(2)
+            self.rect_item.setPen(pen)
+            brush = QBrush(QColor(255, 255, 255, 50))
+            self.rect_item.setBrush(brush)
+
+            self.parent().crop_button.setEnabled(True)
+            self.parent().reset_button.setEnabled(True)
+
+    def cropImage(self):
+        rect = self.rect_item.rect().toRect()
+        cropped_pixmap = self.pixmap_item.pixmap().copy(rect)
+        self.scene.clear()
+        self.pixmap_item = QGraphicsPixmapItem(cropped_pixmap)
+        self.scene.addItem(self.pixmap_item)
+        self.setSceneRect(QRectF(cropped_pixmap.rect()))
+        self.rect_item = None
+
+        self.parent().crop_button.setEnabled(False)
+        self.parent().reset_button.setEnabled(False)
+
+    def cropReset(self):
+        pixmap = self.pixmap_item.pixmap()
+        self.scene.clear()
+        self.pixmap_item = QGraphicsPixmapItem(pixmap)
+        self.scene.addItem(self.pixmap_item)
+        self.setSceneRect(QRectF(pixmap.rect()))
+        self.rect_item = None
+
+        self.parent().crop_button.setEnabled(False)
+        self.parent().reset_button.setEnabled(False)
+
+    def saveCrop(self):
+        pixmap = self.pixmap_item.pixmap()
+        pixmap.save("files\\data.png")
+
+class CropWidget(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet("QDialog {background: rgb(25, 25, 25);}")
+        self.crop_view = CropView()
+
+        self.crop_button = QPushButton("Crop")
+        self.reset_button = QPushButton("Reset")
+        self.apply_button = QPushButton("Apply")
+        self.cancel_button = QPushButton("Cancel")
+
+        self.crop_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                            width: 100px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+
+                                        QPushButton:disabled {
+                                            background-color: #111111;
+                                            border: 1px solid #333333;
+                                        }
+                                        """
+                                    )
+        self.reset_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                            width: 100px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+
+                                        QPushButton:disabled {
+                                            background-color: #111111;
+                                            border: 1px solid #333333;
+                                        }
+                                        """
+                                    )
+        self.apply_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                            width: 100px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+
+                                        QPushButton:disabled {
+                                            background-color: #111111;
+                                            border: 1px solid #333333;
+                                        }
+                                        """
+                                    )
+        self.cancel_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                            width: 100px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+
+                                        QPushButton:disabled {
+                                            background-color: #111111;
+                                            border: 1px solid #333333;
+                                        }
+                                        """
+                                    )
+        
+        self.reset_button.setEnabled(False)
+        self.reset_button.clicked.connect(self.resetCrop)
+
+        self.crop_button.setEnabled(False)
+        self.crop_button.clicked.connect(self.applyCrop)
+
+        self.apply_button.clicked.connect(self.acceptCrop)
+
+        self.cancel_button.clicked.connect(self.rejectCrop)
+
+        vlayout = QVBoxLayout()
+        vlayout.addWidget(self.crop_button)
+        vlayout.addWidget(self.reset_button)
+        vlayout.addSpacing(100)
+        vlayout.addWidget(self.apply_button)
+        vlayout.addWidget(self.cancel_button)
+        vlayout.setAlignment(Qt.AlignCenter)
+
+        hlayout = QHBoxLayout()
+        hlayout.addWidget(self.crop_view)
+        hlayout.addLayout(vlayout)
+
+        self.setLayout(hlayout)
+
+    def callCropDialog(self, windowTitle, windowWidth, windowHeight, modal):
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle(windowTitle)
+        self.setGeometry(700, 300, windowWidth, windowHeight)
+        self.setFixedSize(QSize(windowWidth, windowHeight))
+        self.setModal(modal)
+
+        self.return_value = False
+
+        self.show()
+        self.crop_view.setPhoto(QPixmap("files\\data.png"))
+        self.exec()
+
+        if self.return_value:
+            return True
+        else:
+            return False
+
+    def applyCrop(self):
+        self.crop_view.cropImage()
+        self.return_value = True
+
+    def resetCrop(self):
+        self.crop_view.cropReset()
+
+    def acceptCrop(self):
+        self.crop_view.saveCrop()
+        self.accept()
+
+    def rejectCrop(self):
+        self.return_value = False
+        self.reject()
+
 app = QApplication(sys.argv)
 window = MainWindow(app)
 window.show()
