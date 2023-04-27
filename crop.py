@@ -1,6 +1,9 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem
+from PySide6.QtWidgets import (QApplication, QMainWindow, QGraphicsView, 
+                               QGraphicsScene, QGraphicsPixmapItem, QGraphicsRectItem, 
+                               QWidget, QHBoxLayout, QLabel, QLineEdit, QPushButton, 
+                               QVBoxLayout)
 from PySide6.QtGui import QPixmap, QMouseEvent, QPen, QBrush, QColor
-from PySide6.QtCore import Qt, QRectF
+from PySide6.QtCore import Qt, QRectF, QPointF
 
 class CropView(QGraphicsView):
     def __init__(self):
@@ -9,20 +12,45 @@ class CropView(QGraphicsView):
         self.rect_item = None
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
-        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-    
-    def setPixmap(self, pixmap):
-        self.pixmap_item = QGraphicsPixmapItem(pixmap)
+
+        self.pixmap_item = QGraphicsPixmapItem()
         self.scene.addItem(self.pixmap_item)
-        self.setSceneRect(QRectF(pixmap.rect()))
+
+
+    def setPhoto(self, pixmap=None):
+        if pixmap and not pixmap.isNull():
+            self._empty = False
+            self.setDragMode(QGraphicsView.ScrollHandDrag)
+            self.pixmap_item.setPixmap(pixmap)
+            self._size = self.size() 
+        else:
+            self._empty = True
+            self.setDragMode(QGraphicsView.NoDrag)
+            self.pixmap_item.setPixmap(QPixmap())
+        self.fitInView()
+
+    def fitInView(self, scale=True):
+        rect = QRectF(self.pixmap_item.pixmap().rect())
+        if not rect.isNull():
+            self.setSceneRect(rect)
+
+            unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
+            self.scale(1 / unity.width(), 1 / unity.height())
+            viewrect = self.viewport().rect()
+            scenerect = self.transform().mapRect(rect)
+            factor = min(viewrect.width() / scenerect.width(),
+                            viewrect.height() / scenerect.height())
+            self.scale(factor, factor)
     
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             self.setDragMode(QGraphicsView.NoDrag)
-            pos = event.position()
+            
+            pos = self.mapToScene(event.position().toPoint())
+
             self.rect_item = QGraphicsRectItem(pos.x(), pos.y(), 0, 0)
             pen = QPen(Qt.white)
-            pen.setWidth(4)
+            pen.setWidth(2)
             self.rect_item.setPen(pen)
             brush = QBrush(QColor(255, 255, 255, 100))
             self.rect_item.setBrush(brush)
@@ -31,7 +59,8 @@ class CropView(QGraphicsView):
     def mouseMoveEvent(self, event: QMouseEvent):
         if self.rect_item is not None:
             rect = self.rect_item.rect()
-            rect.setBottomRight(event.position())
+
+            rect.setBottomRight(self.mapToScene(event.position().toPoint()))
             self.rect_item.setRect(rect.normalized())
     
     def mouseReleaseEvent(self, event: QMouseEvent):
@@ -45,13 +74,34 @@ class CropView(QGraphicsView):
             self.setSceneRect(QRectF(cropped_pixmap.rect()))
             self.rect_item = None
 
+class CropWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.crop_view = CropView()
+        label = QLabel("Crop Image")
+        apply_button = QPushButton("Apply")
+        cancel_button = QPushButton("Cancel")
+
+        vlayout = QVBoxLayout()
+        vlayout.addWidget(label)
+        vlayout.addWidget(apply_button)
+        vlayout.addWidget(cancel_button)
+        vlayout.setAlignment(Qt.AlignCenter)
+
+        hlayout = QHBoxLayout()
+        hlayout.addWidget(self.crop_view)
+        hlayout.addLayout(vlayout)
+
+        self.setLayout(hlayout)
 
 app = QApplication([])
-main_window = QMainWindow()
-main_window.setGeometry(100, 100, 640, 480)
-crop_view = CropView()
-pixmap = QPixmap('image.jpg')
-crop_view.setPixmap(pixmap)
-main_window.setCentralWidget(crop_view)
-main_window.show()
+window = QMainWindow()
+window.setGeometry(400, 300, 1000, 600)
+window.setFixedSize(1000, 600)
+
+crop_widget = CropWidget()
+window.setCentralWidget(crop_widget)
+
+window.show()
+crop_widget.crop_view.setPhoto(QPixmap('image.jpg'))
 app.exec()

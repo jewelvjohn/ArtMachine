@@ -12,12 +12,12 @@ from PySide6.QtCore import Qt, QSize, QPointF, QRectF
 from PySide6.QtGui import (QAction, QIcon, QPixmap, 
                            QFont, QDoubleValidator, 
                            QValidator, QBrush, QColor,
-                           QFontDatabase)
+                           QFontDatabase, QPen, QMouseEvent)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
                                QGraphicsScene, QGraphicsPixmapItem, QFrame, 
-                               QRadioButton, QGroupBox)
+                               QRadioButton, QGroupBox, QGraphicsRectItem)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -147,6 +147,14 @@ class MainWindow(QMainWindow):
         rotate_anticlockwise_action = transform_menu.addAction(QIcon("sprites\\Backward.png"), "Rotate 90 Anti-Clockwise")
         rotate_anticlockwise_action.setStatusTip("Rotate the image 90 Anti-Clockwise")
         rotate_anticlockwise_action.triggered.connect(self.rotateAnticlockwise)
+
+        flip_horizontal_action = transform_menu.addAction(QIcon("sprites\\Horizontal.png"), "Flip Horizontal") 
+        flip_horizontal_action.setStatusTip("Flip the image horizontally")
+        flip_horizontal_action.triggered.connect(self.flipHorizontal)
+
+        flip_verical_action = transform_menu.addAction(QIcon("sprites\\Vertical.png"), "Flip Vertical")
+        flip_verical_action.setStatusTip("Flip the image vertically")
+        flip_verical_action.triggered.connect(self.flipVertical)
 
         gray_action = image_menu.addAction("Grayscale")
         gray_action.setStatusTip("Converts the image into Grayscale")
@@ -397,6 +405,37 @@ class MainWindow(QMainWindow):
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def flipHorizontal(self):
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            flipped_img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+            flipped_img.save(self.cache_path)
+
+            self.statusBar().showMessage("Image successfully flipped" ,3000)
+            self.addCommand()
+            self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def flipVertical(self):
+        if self.viewer.hasPhoto():
+            img = Image.open(self.cache_path)
+            flipped_img = img.transpose(Image.FLIP_TOP_BOTTOM)
+
+            flipped_img.save(self.cache_path)
+
+            self.statusBar().showMessage("Image successfully flipped" ,3000)
+            self.addCommand()
+            self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def cropTool(self):
+        self.editMode = True
 
     def setImage(self):
         im_file = BytesIO(self.uStack[-1])
@@ -700,14 +739,13 @@ class Viewport(QGraphicsView):
             else:
                 self._zoom = -20
 
-
     def toggleDragMode(self):
         if self.dragMode() == QGraphicsView.ScrollHandDrag:
             self.setDragMode(QGraphicsView.NoDrag)
         elif not self._photo.pixmap().isNull():
             self.setDragMode(QGraphicsView.ScrollHandDrag)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
         super(Viewport, self).mousePressEvent(event)
 
     def dragEnterEvent(self, event):
