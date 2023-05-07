@@ -35,7 +35,7 @@ class MainWindow(QMainWindow):
 
         self.viewer = Viewport(self)
         
-        self.default_path = "X:\\Documents\\Assets\\Stuff\\References"
+        self.default_path = os.path.expanduser("~")+"\\Downloads\\"
         self.cache_path = "files\\data.png"
 
         self.open_path = ()
