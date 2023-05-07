@@ -29,9 +29,6 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("QMainWindow {background: rgb(50, 50, 50);}")
         self.setGeometry(500, 150, 1000, 700)
 
-        font_id = QFontDatabase.addApplicationFont("fonts\\Poppins-Regular.ttf")
-        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-
         tool_bar = QToolBar("Toolbar")
         status_bar = QStatusBar(self)
         menu_bar = self.menuBar()
@@ -66,7 +63,6 @@ class MainWindow(QMainWindow):
                                     color: #CCCCCC;
                                     border: none;
                                     padding: 6px 6px;
-                                    font-family: "{font_family}";
                                     font-size: 16px;
                                 }
                                 QToolButton:hover {
@@ -83,7 +79,6 @@ class MainWindow(QMainWindow):
                                 QMenuBar {
                                     background-color: #323232;
                                     color: #CCCCCC;
-                                    font-family: "{font_family}";
                                     font-size: 16px;
                                 }
                                 QMenuBar::item {
@@ -157,7 +152,7 @@ class MainWindow(QMainWindow):
         flip_verical_action.setStatusTip("Flip the image vertically")
         flip_verical_action.triggered.connect(self.flipVertical)
 
-        crop_image_action = transform_menu.addAction(QIcon("sprites\\Vertical.png"), "Crop Image")
+        crop_image_action = transform_menu.addAction(QIcon("sprites\\Crop.png"), "Crop Image")
         crop_image_action.setStatusTip("Dialog for cropping the image")
         crop_image_action.triggered.connect(self.cropDialog)
 
@@ -177,7 +172,7 @@ class MainWindow(QMainWindow):
         brightness_action.setStatusTip("Allows you to modify the image brightness")
         brightness_action.triggered.connect(self.brightnessDialog)
 
-        draw_action = filter_menu.addAction(QIcon("sprites\\Draw.png"), "Draw")
+        draw_action = filter_menu.addAction(QIcon("sprites\\Pencil.png"), "Draw")
         draw_action.setStatusTip("Applies a drawing filter to the picture")
         draw_action.triggered.connect(self.drawImage)
 
@@ -205,8 +200,9 @@ class MainWindow(QMainWindow):
         self.addToolBar(Qt.RightToolBarArea, tool_bar)
         self.setStatusBar(status_bar)
 
-        tool_bar.addAction(open_action)
-        tool_bar.addAction(save_action)
+        tool_bar.addAction(crop_image_action)
+        tool_bar.addAction(draw_action)
+        tool_bar.addAction(rembg_action)
 
         self.setCentralWidget(self.viewer)
 
@@ -326,14 +322,14 @@ class MainWindow(QMainWindow):
             output.save(self.cache_path)
 
             if self.rem_index == 1:
-                width, height = input.size
+                height, width = input.size
                 white = Image.new("RGB", (height, width), (255, 255, 255))
 
                 white.paste(output, (0,0), mask = output)
                 white.save(self.cache_path)
                 
             elif self.rem_index == 2:
-                width, height = input.size
+                height, width = input.size
                 white = Image.new("RGB", (height, width), (0, 0, 0))
 
                 white.paste(output, (0,0), mask = output)
@@ -392,6 +388,9 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage("Image successfully cropped" ,3000)
                 self.addCommand()
                 self.setImage()
+
+        else:
+            self.statusBar().showMessage("No image currently open!" ,3000)
 
     def rotateClockwise(self):
         if self.viewer.hasPhoto():
