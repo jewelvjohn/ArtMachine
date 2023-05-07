@@ -8,17 +8,15 @@ from io import BytesIO
 from rembg import remove
 from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 
-from PySide6.QtCore import Qt, QSize, QPointF, QRectF
-from PySide6.QtGui import (QAction, QIcon, QPixmap, 
-                           QFont, QDoubleValidator, 
+from PySide6.QtCore import Qt, QSize, QRectF
+from PySide6.QtGui import (QIcon, QPixmap, QDoubleValidator, 
                            QValidator, QBrush, QColor,
-                           QFontDatabase, QPen, QMouseEvent)
+                           QPen, QMouseEvent)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
                                QGraphicsScene, QGraphicsPixmapItem, QFrame, 
-                               QRadioButton, QGroupBox, QGraphicsRectItem, 
-                               QLabel)
+                               QRadioButton, QGroupBox, QGraphicsRectItem)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
