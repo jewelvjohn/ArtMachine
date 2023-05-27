@@ -11,12 +11,13 @@ from PIL import Image, ImageOps, ImageFilter, ImageMath, ImageEnhance
 from PySide6.QtCore import Qt, QSize, QRectF
 from PySide6.QtGui import (QIcon, QPixmap, QDoubleValidator, 
                            QValidator, QBrush, QColor,
-                           QPen, QMouseEvent)
+                           QPen, QMouseEvent, QFont)
 from PySide6.QtWidgets import (QApplication, QMainWindow, QToolBar, QStatusBar, 
                                QFileDialog, QDialog, QVBoxLayout, QHBoxLayout, 
                                QPushButton, QLineEdit, QSlider, QGraphicsView, 
                                QGraphicsScene, QGraphicsPixmapItem, QFrame, 
-                               QRadioButton, QGroupBox, QGraphicsRectItem)
+                               QRadioButton, QGroupBox, QGraphicsRectItem, QLabel,
+                               QSizePolicy)
 
 class MainWindow(QMainWindow):
     def __init__(self, app):
@@ -50,7 +51,7 @@ class MainWindow(QMainWindow):
         self.img_contrast = float(1.5)
         self.img_brightness = float(1.5)
 
-        tool_bar.setIconSize(QSize(32, 32))
+        tool_bar.setIconSize(QSize(26, 26))
         tool_bar.setStyleSheet("""
                                 QToolBar {
                                     background-color: #323232;
@@ -150,7 +151,7 @@ class MainWindow(QMainWindow):
         flip_verical_action.setStatusTip("Flip the image vertically")
         flip_verical_action.triggered.connect(self.flipVertical)
 
-        crop_image_action = transform_menu.addAction(QIcon("sprites\\Crop.png"), "Crop Image")
+        crop_image_action = transform_menu.addAction(QIcon("sprites\\Crop.png"), "Crop")
         crop_image_action.setStatusTip("Dialog for cropping the image")
         crop_image_action.triggered.connect(self.cropDialog)
 
@@ -170,12 +171,12 @@ class MainWindow(QMainWindow):
         brightness_action.setStatusTip("Allows you to modify the image brightness")
         brightness_action.triggered.connect(self.brightnessDialog)
 
-        draw_action = filter_menu.addAction(QIcon("sprites\\Pencil.png"), "Draw")
-        draw_action.setStatusTip("Applies a drawing filter to the picture")
+        draw_action = filter_menu.addAction(QIcon("sprites\\Pencil.png"), "Picture Drawing")
+        draw_action.setStatusTip("Applies a drawing filter to the current picture")
         draw_action.triggered.connect(self.drawImage)
 
-        rembg_action = filter_menu.addAction(QIcon("sprites\\Remove.png"), "Remove Background")
-        rembg_action.setStatusTip("Tries to remove the background of the picture")
+        rembg_action = filter_menu.addAction(QIcon("sprites\\Remove.png"), "Background Removal")
+        rembg_action.setStatusTip("Tries to remove the background from the current picture")
         rembg_action.triggered.connect(self.rem_bgDialog)
 
         zoomIn_action = view_menu.addAction(QIcon("sprites\\ZoomIn.png"), "Zoom In")
@@ -194,11 +195,13 @@ class MainWindow(QMainWindow):
         reset_action.triggered.connect(self.setImage)
 
         about_action = help_menu.addAction("About")
+        about_action.triggered.connect(self.aboutDialog)
 
         self.addToolBar(Qt.RightToolBarArea, tool_bar)
         self.setStatusBar(status_bar)
 
         tool_bar.addAction(crop_image_action)
+        tool_bar.addSeparator()
         tool_bar.addAction(draw_action)
         tool_bar.addAction(rembg_action)
 
@@ -389,6 +392,10 @@ class MainWindow(QMainWindow):
 
         else:
             self.statusBar().showMessage("No image currently open!" ,3000)
+
+    def aboutDialog(self):
+        about_widget = ApplicationDialogs()
+        about_widget.aboutDialog()
 
     def rotateClockwise(self):
         if self.viewer.hasPhoto():
@@ -662,6 +669,125 @@ class ApplicationDialogs(QDialog):
                 self.radioValue = i
 
         self.accept()
+
+    def aboutDialog(self):
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle("About")
+        self.setGeometry(700, 300, 550, 300)
+        self.setStyleSheet("QDialog {background: rgb(25, 25, 25);}")
+        self.setModal(True)
+
+        layout = QVBoxLayout()
+        about_layout = QHBoxLayout()
+        text_layout = QVBoxLayout()
+        link_layout = QHBoxLayout()
+
+        image_label = QLabel()
+        pixmap = QPixmap("sprites\\Icon.png")
+        pixmap = pixmap.scaledToWidth(128)
+
+        header_label = QLabel()
+        header_label.setText("Artmachine")
+        header_label.setFont(QFont("Arial", 26))
+        header_label.setStyleSheet("""QLabel {
+                                                color: #DDDDDD;
+                                            }""")
+        header_label.setAlignment(Qt.AlignCenter)
+
+        image_label.setPixmap(pixmap)
+        image_label.setScaledContents(True)
+        image_label.setFixedSize(128, 128)
+
+        hello_label = QLabel()
+        hello_label.setText("Hello, ")
+        hello_label.setFont(QFont("Arial", 22))
+        hello_label.setStyleSheet("""QLabel {
+                                                color: #CCCCCC;
+                                                border: 1px solid #333333;
+                                                border-radius: 8px;
+                                                background: #333333;
+                                            }""")
+
+        text_label = QLabel()
+        text_label.setText("        Name's Jewel John, I'm a computer science student & this application was developed just for the fun of it. It's built using PySide6 and other Python libraries. Thanks for trying it out. If you wanna contact me feel free to do so. Links to my website and socials are given below.")
+        text_label.setAlignment(Qt.AlignLeft)
+        text_label.setWordWrap(True)
+        text_label.setFont(QFont("Arial", 12))
+        text_label.setStyleSheet("""QLabel {
+                                                color: #CCCCCC;
+                                                border: 1px solid #333333;
+                                                border-radius: 8px;
+                                                background: #333333;
+                                            }""")
+        text_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        text_layout.addWidget(hello_label)
+        text_layout.addWidget(text_label)
+        text_layout.setAlignment(Qt.AlignCenter)
+
+        about_layout.addSpacing(20)
+        about_layout.addWidget(image_label)
+        about_layout.addSpacing(10)
+        about_layout.addLayout(text_layout)
+        about_layout.addSpacing(20)
+        about_layout.setAlignment(Qt.AlignCenter)
+
+        website = QLabel()
+        website.setText('<a href="https://jewelvjohn.github.io">Website</a>')
+        website.setStyleSheet("""QLabel {
+                                                border: 1px solid #CCCCCC;
+                                                background: #CCCCCC;
+                                                border-radius: 8px;
+                                            }""")
+        website.setAlignment(Qt.AlignCenter)
+        website.setFont(QFont("Impact", 12))
+        website.setOpenExternalLinks(True)
+        website.setMinimumHeight(30)
+
+        instagram = QLabel()
+        instagram.setText('<a href="https://www.instagram.com/jewelvjohn">Instagram</a>')
+        instagram.setStyleSheet("""QLabel {
+                                                border: 1px solid #CCCCCC;
+                                                background: #CCCCCC;
+                                                border-radius: 8px;
+                                            }""")
+        instagram.setAlignment(Qt.AlignCenter)
+        instagram.setFont(QFont("Impact", 12))
+        instagram.setOpenExternalLinks(True)
+        instagram.setMinimumHeight(30)
+
+        github = QLabel()
+        github.setText('<a href="https://github.com/jewelvjohn">Github</a>')
+        github.setStyleSheet("""QLabel {
+                                                border: 1px solid #CCCCCC;
+                                                background: #CCCCCC;
+                                                border-radius: 8px;
+                                            }""")
+        github.setAlignment(Qt.AlignCenter)
+        github.setFont(QFont("Impact", 12))
+        github.setOpenExternalLinks(True)
+        github.setMinimumHeight(30)
+
+        link_layout.addSpacing(30)
+        link_layout.addWidget(website)
+        link_layout.addSpacing(30)
+        link_layout.addWidget(instagram)
+        link_layout.addSpacing(30)
+        link_layout.addWidget(github)
+        link_layout.addSpacing(30)
+
+        layout.addSpacing(5)
+        layout.addWidget(header_label)
+        layout.addSpacing(10)
+        layout.addLayout(about_layout)
+        layout.addSpacing(20)
+        layout.addLayout(link_layout)
+        layout.addSpacing(10)
+
+        self.setLayout(layout)
+
+        self.show()
+        self.exec()
 
 class Viewport(QGraphicsView):
     def __init__(self, parent):
