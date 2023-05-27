@@ -134,6 +134,7 @@ class MainWindow(QMainWindow):
 
         settings_action = edit_menu.addAction(QIcon("sprites\\Settings.png"), "Settings")
         settings_action.setStatusTip("Enter application settings")
+        settings_action.triggered.connect(self.settingsDialog)
 
         rotate_clockwise_action = transform_menu.addAction(QIcon("sprites\\Forward.png"), "Rotate 90 Clockwise") 
         rotate_clockwise_action.setStatusTip("Rotate the image 90 clockwise")
@@ -396,6 +397,10 @@ class MainWindow(QMainWindow):
     def aboutDialog(self):
         about_widget = ApplicationDialogs()
         about_widget.aboutDialog()
+
+    def settingsDialog(self):
+        settings_widget = ApplicationDialogs()
+        settings_widget.settingsDialog(self.default_path, self.default_path)
 
     def rotateClockwise(self):
         if self.viewer.hasPhoto():
@@ -686,6 +691,10 @@ class ApplicationDialogs(QDialog):
         pixmap = QPixmap("sprites\\Icon.png")
         pixmap = pixmap.scaledToWidth(128)
 
+        image_label.setPixmap(pixmap)
+        image_label.setScaledContents(True)
+        image_label.setFixedSize(128, 128)
+
         header_label = QLabel()
         header_label.setText("Artmachine")
         header_label.setFont(QFont("Arial", 26))
@@ -693,10 +702,6 @@ class ApplicationDialogs(QDialog):
                                                 color: #DDDDDD;
                                             }""")
         header_label.setAlignment(Qt.AlignCenter)
-
-        image_label.setPixmap(pixmap)
-        image_label.setScaledContents(True)
-        image_label.setFixedSize(128, 128)
 
         hello_label = QLabel()
         hello_label.setText("Hello, ")
@@ -788,6 +793,234 @@ class ApplicationDialogs(QDialog):
 
         self.show()
         self.exec()
+
+    def settingsDialog(self, openLocation, saveLocation):
+        self.setWindowIcon(QIcon("sprites\\Icon.png"))
+        self.setWindowTitle("Settings")
+        self.setGeometry(700, 300, 560, 200)
+        self.setStyleSheet("QDialog {background: rgb(25, 25, 25);}")
+        self.setModal(True)
+        self.settingsEdit = False
+
+        main_layout = QHBoxLayout(self)
+        base_layout = QVBoxLayout()
+        logo_layout = QVBoxLayout()
+        settings_layout = QVBoxLayout()
+        open_layout = QHBoxLayout()
+        save_layout = QHBoxLayout()
+        button_layout = QHBoxLayout()
+
+        image_label = QLabel()
+        pixmap = QPixmap("sprites\\Settings.png")
+        pixmap = pixmap.scaledToWidth(96)
+
+        image_label.setPixmap(pixmap)
+        image_label.setScaledContents(True)
+        image_label.setFixedSize(96, 96)
+        image_label.setAlignment(Qt.AlignCenter)
+        image_label.setStyleSheet(
+                            """QLabel {
+                                    background-color: #404040; 
+                                    border: 10px solid #404040;
+                                    border-radius: 40px;
+                                }""")
+
+        header_label = QLabel()
+        header_label.setText("Settings")
+        header_label.setAlignment(Qt.AlignCenter)
+        header_label.setFont(QFont("Arial", 16, 800))
+        header_label.setStyleSheet("QLabel {color: #CCCCCC;}")
+
+        open_label = QLabel()
+        open_label.setText("Default open destination: ")
+        open_label.setAlignment(Qt.AlignCenter)
+        open_label.setFont(QFont("Arial", 12))
+        open_label.setStyleSheet("QLabel {color: #CCCCCC;}")
+        open_label.setWordWrap(True)
+        open_label.setMaximumWidth(200)
+
+        save_label = QLabel()
+        save_label.setText("Default save destination: ")
+        save_label.setAlignment(Qt.AlignCenter)
+        save_label.setFont(QFont("Arial", 12))
+        save_label.setStyleSheet("QLabel {color: #CCCCCC;}")
+        save_label.setWordWrap(True)
+        save_label.setMaximumWidth(200)
+
+        open_line = QLineEdit()
+        open_line.setMinimumSize(100, 40)
+        open_line.setAlignment(Qt.AlignCenter)
+        open_line.setText(str(openLocation))
+        open_line.editingFinished.connect(self.settingsEditted)
+        open_line.setStyleSheet(
+                            """QLineEdit {
+                                    background-color: #404040; 
+                                    border: 2px solid #404040;
+                                    color: #CCCCCC; 
+                                    border-radius: 10px;
+                                }"""
+                        )
+        
+        save_line = QLineEdit()
+        save_line.setMinimumSize(100, 40)
+        save_line.setAlignment(Qt.AlignCenter)
+        save_line.setText(str(saveLocation))
+        save_line.editingFinished.connect(self.settingsEditted)
+        save_line.setStyleSheet(
+                            """QLineEdit {
+                                    background-color: #404040; 
+                                    border: 2px solid #404040; 
+                                    color: #CCCCCC; 
+                                    border-radius: 10px;
+                                }"""
+                        )
+        
+        open_button = QPushButton("...")
+        open_button.setMaximumSize(40, 40)
+        open_button.setMinimumSize(40, 40)
+        #open_button.clicked.connect(self.reject)
+        open_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #222222;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
+        
+        save_button = QPushButton("...")
+        save_button.setMaximumSize(40, 40)
+        save_button.setMinimumSize(40, 40)
+        #save_button.clicked.connect(self.reject)
+        save_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #222222;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
+        
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setMaximumSize(100, 40)
+        cancel_button.setMinimumSize(100, 40)
+        cancel_button.clicked.connect(self.reject)
+        cancel_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
+        
+        apply_button = QPushButton("Apply")
+        apply_button.setMaximumSize(100, 40)
+        apply_button.setMinimumSize(100, 40)
+        #apply_button.clicked.connect()
+        apply_button.setStyleSheet(
+                                        """
+                                        QPushButton {
+                                            background-color: #222222;
+                                            border: 2px solid #555555;
+                                            border-radius: 5px;
+                                            color: #CCCCCC;
+                                            padding: 8px 8px;
+                                        }
+                                        
+                                        QPushButton:hover {
+                                            background-color: #333333;
+                                        }
+                                        
+                                        QPushButton:pressed {
+                                            background-color: #444444;
+                                            border: 2px solid #777777;
+                                        }
+                                        """
+                                    )
+
+        logo_layout.addSpacing(10)
+        logo_layout.addWidget(header_label)
+        logo_layout.addSpacing(10)
+        logo_layout.addWidget(image_label)
+        logo_layout.addSpacing(10)
+
+        open_layout.addWidget(open_label)
+        open_layout.addSpacing(10)
+        open_layout.addWidget(open_line)
+        open_layout.addSpacing(5)
+        open_layout.addWidget(open_button)
+        save_layout.addWidget(save_label)
+        save_layout.addSpacing(10)
+        save_layout.addWidget(save_line)
+        save_layout.addSpacing(5)
+        save_layout.addWidget(save_button)
+
+        settings_layout.addLayout(open_layout)
+        settings_layout.addSpacing(5)
+        settings_layout.addLayout(save_layout)
+
+        button_layout.addWidget(cancel_button)
+        button_layout.addSpacing(10)
+        button_layout.addWidget(apply_button)
+        button_layout.addSpacing(10)
+        button_layout.setAlignment(Qt.AlignRight)
+
+        base_layout.addSpacing(10)
+        base_layout.addLayout(settings_layout)
+        base_layout.addSpacing(10)
+        base_layout.addLayout(button_layout)
+
+        main_layout.addSpacing(20)
+        main_layout.addLayout(logo_layout)
+        main_layout.addSpacing(20)
+        main_layout.addLayout(base_layout)
+        main_layout.addSpacing(10)
+        
+        self.setLayout(main_layout)
+
+        self.show()
+        self.exec()
+
+    def settingsEditted(self):
+        self.settingsEdit = True
+
 
 class Viewport(QGraphicsView):
     def __init__(self, parent):
